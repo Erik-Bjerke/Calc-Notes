@@ -11,7 +11,14 @@
 
     <!-- Notes List -->
     <div class="flex-1 overflow-y-auto">
-      <div v-for="note in notes" :key="note.id" @click="$emit('select-note', note.id)"
+      <div v-for="note in notes" :key="note.id" 
+        @click="handleNoteClick(note.id)"
+        @touchstart="handleTouchStart(note.id)"
+        @touchend="handleTouchEnd"
+        @touchcancel="handleTouchEnd"
+        @mousedown="handleMouseDown(note.id)"
+        @mouseup="handleMouseUp"
+        @mouseleave="handleMouseUp"
         class="p-4 border-b border-gray-200 dark:border-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-850 transition-colors"
         :class="{ 'bg-white dark:bg-gray-925 border-l-4 border-l-primary-500': note.id === currentNoteId }">
         <div class="flex items-start justify-between gap-2">
@@ -49,7 +56,50 @@ defineProps({
   }
 })
 
-defineEmits(['new-note', 'select-note', 'delete-note'])
+const emit = defineEmits(['new-note', 'select-note', 'delete-note', 'edit-note'])
+
+// Long press handling
+const longPressTimer = ref(null)
+const longPressTriggered = ref(false)
+const LONG_PRESS_DURATION = 500 // milliseconds
+
+const handleTouchStart = (noteId) => {
+  longPressTriggered.value = false
+  longPressTimer.value = setTimeout(() => {
+    longPressTriggered.value = true
+    emit('edit-note', noteId)
+  }, LONG_PRESS_DURATION)
+}
+
+const handleTouchEnd = () => {
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value)
+    longPressTimer.value = null
+  }
+}
+
+const handleMouseDown = (noteId) => {
+  longPressTriggered.value = false
+  longPressTimer.value = setTimeout(() => {
+    longPressTriggered.value = true
+    emit('edit-note', noteId)
+  }, LONG_PRESS_DURATION)
+}
+
+const handleMouseUp = () => {
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value)
+    longPressTimer.value = null
+  }
+}
+
+const handleNoteClick = (noteId) => {
+  // Only emit select if long press wasn't triggered
+  if (!longPressTriggered.value) {
+    emit('select-note', noteId)
+  }
+  longPressTriggered.value = false
+}
 
 const formatDate = (dateString) => {
   const date = new Date(dateString)

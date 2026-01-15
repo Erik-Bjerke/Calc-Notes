@@ -2,7 +2,7 @@
   <div class="h-screen flex flex-col bg-white dark:bg-gray-925">
     <!-- Mobile-friendly Toolbar -->
     <AppHeader :current-note="currentNote" :show-results="showResults" @toggle-sidebar="showSidebar = !showSidebar"
-      @show-meta="showMetaModal = true" @apply-format="applyFormat" @toggle-results="showResults = !showResults"
+      @show-meta="currentNote && (showMetaModal = true)" @apply-format="applyFormat" @toggle-results="showResults = !showResults"
       @show-templates="showTemplates = true" @show-shortcuts="showShortcuts = true" @show-help="showHelp = true"
       @show-language="showLanguageModal = true" />
 
@@ -14,7 +14,7 @@
         showSidebar && 'max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:z-20 max-lg:shadow-xl'
       ]">
         <NotesList :notes="notes" :current-note-id="currentNoteId" @new-note="addNote" @select-note="selectNote"
-          @delete-note="confirmDelete" />
+          @delete-note="confirmDelete" @edit-note="openEditModal" />
       </aside>
 
       <!-- Overlay for mobile -->
@@ -34,7 +34,8 @@
 
     <!-- Modals -->
     <NoteMetaModal :is-open="showMetaModal" :title="currentNote?.title || ''"
-      :description="currentNote?.description || ''" @close="showMetaModal = false" @save="updateMeta" />
+      :description="currentNote?.description || ''" :note-id="currentNote?.id" @close="showMetaModal = false"
+      @save="updateMeta" @delete="confirmDelete" />
 
     <HelpModal :is-open="showHelp" @close="showHelp = false" />
     <ShortcutsModal :is-open="showShortcuts" @close="showShortcuts = false" />
@@ -65,6 +66,11 @@ onMounted(() => {
 const selectNote = (id) => {
   currentNoteId.value = id
   showSidebar.value = false // Close sidebar on mobile after selection
+}
+
+const openEditModal = (id) => {
+  currentNoteId.value = id
+  showMetaModal.value = true
 }
 
 const updateContent = (content) => {

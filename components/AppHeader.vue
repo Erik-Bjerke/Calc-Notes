@@ -8,11 +8,6 @@
           title="Toggle notes list">
           <Icon name="mdi:menu" class="w-5 h-5" />
         </button>
-        <button @click="$emit('show-meta')"
-          class="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-850 rounded-lg transition-colors"
-          title="Note details">
-          <Icon name="mdi:pencil" class="w-5 h-5" />
-        </button>
         <button @click="$emit('show-meta')" class="text-left">
           <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-400 truncate max-w-[200px] sm:max-w-none">
             {{ currentNote?.title || 'Notes' }}
