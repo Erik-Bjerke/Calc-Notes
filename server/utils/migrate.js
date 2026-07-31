@@ -249,6 +249,30 @@ export async function migrate() {
     END $do$
   `)
 
+  // ── Collaborative sharing ──────────────────────────────────────────────
+  // A share is either 'read-only' (static snapshot, existing behaviour) or
+  // 'collaborative' (real-time co-editing backed by an Automerge document).
+  // `allow_guests` controls whether users without an account may join.
+  // `automerge_url` holds the collaborative document reference (automerge:...).
+  await query(`
+    DO $do$ BEGIN
+      ALTER TABLE shared_notes ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'read-only';
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $do$
+  `)
+  await query(`
+    DO $do$ BEGIN
+      ALTER TABLE shared_notes ADD COLUMN IF NOT EXISTS allow_guests BOOLEAN NOT NULL DEFAULT FALSE;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $do$
+  `)
+  await query(`
+    DO $do$ BEGIN
+      ALTER TABLE shared_notes ADD COLUMN IF NOT EXISTS automerge_url TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $do$
+  `)
+
   // Track whether the welcome note has been created for this user
   await query(`
     DO $do$ BEGIN

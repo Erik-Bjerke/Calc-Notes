@@ -91,6 +91,7 @@ export default defineNuxtConfig({
         'mdi:account-edit-outline',
         'mdi:account-group',
         'mdi:account-group-outline',
+        'mdi:account-lock-outline',
         'mdi:account-outline',
         'mdi:account-remove-outline',
         'mdi:alert-circle',
@@ -317,6 +318,9 @@ export default defineNuxtConfig({
     appVersion: process.env.npm_package_version || '0.0.0',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '',
+      // WebSocket URL of the collaborative sync service. When empty, the client
+      // derives it from the API base / current origin (see useCollabConfig).
+      collabWsUrl: process.env.NUXT_PUBLIC_COLLAB_WS_URL || '',
       storeAndroid:
         process.env.NUXT_PUBLIC_STORE_ANDROID ||
         'https://play.google.com/store/apps/details?id=notes.numori.app',
@@ -325,8 +329,28 @@ export default defineNuxtConfig({
     },
   },
   vite: {
+    resolve: {
+      alias: [
+        // Automerge ships several entrypoints. `automerge-repo` and the
+        // codemirror plugin import the bare `@automerge/automerge`, whose
+        // `browser` condition resolves to a build that expects the bundler to
+        // handle a separate `.wasm` asset. We pin all bare imports to the
+        // `slim` build instead and initialize the WASM ourselves from an
+        // inlined base64 copy (see utils/automerge.js). This keeps a single
+        // shared WASM instance and works under capacitor:// and file://.
+        // The regex is anchored so it does NOT match `@automerge/automerge-repo`
+        // or the `@automerge/automerge/slim` subpath imports.
+        { find: /^@automerge\/automerge$/, replacement: '@automerge/automerge/slim' },
+      ],
+    },
     optimizeDeps: {
       include: [
+        '@automerge/automerge/slim',
+        '@automerge/automerge/automerge.wasm.base64',
+        '@automerge/automerge-repo',
+        '@automerge/automerge-repo-network-websocket',
+        '@automerge/automerge-repo-storage-indexeddb',
+        '@automerge/automerge-codemirror',
         '@codemirror/view',
         '@codemirror/state',
         '@codemirror/language',

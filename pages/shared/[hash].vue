@@ -17,9 +17,26 @@
           <Icon name="mdi:arrow-left" class="w-4 h-4" />
           Numori
         </a>
-        <span class="text-xs text-gray-500 dark:text-gray-500 absolute left-1/2 -translate-x-1/2"
-          >Shared Note</span
+        <span
+          class="text-xs text-gray-500 dark:text-gray-500 absolute left-1/2 -translate-x-1/2 flex items-center gap-1"
         >
+          <template v-if="collabHandle">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+            Live collaboration
+            <span v-if="participants.length" class="flex items-center -space-x-1 ml-1">
+              <span
+                v-for="p in participants.slice(0, 5)"
+                :key="p.id"
+                :title="p.name"
+                class="w-4 h-4 rounded-full border border-white dark:border-gray-900 flex items-center justify-center text-[8px] text-white font-medium"
+                :style="{ backgroundColor: p.color }"
+              >
+                {{ (p.name || '?').charAt(0).toUpperCase() }}
+              </span>
+            </span>
+          </template>
+          <template v-else>Shared Note</template>
+        </span>
         <ThemeSwitcher />
       </div>
     </header>
@@ -76,6 +93,26 @@
           <Icon name="mdi:lock-open-outline" class="w-4 h-4" />
           Decrypt
         </UiButton>
+      </div>
+    </div>
+
+    <!-- Collaborative share that requires an account (guests not allowed) -->
+    <div v-else-if="needsAccount" class="flex-1 flex items-center justify-center px-6">
+      <div class="max-w-sm w-full space-y-4 text-center">
+        <Icon name="mdi:account-lock-outline" class="w-12 h-12 text-gray-400 mx-auto" />
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-200">
+          Sign in to collaborate
+        </h2>
+        <p class="text-sm text-gray-500 dark:text-gray-500">
+          This note is shared for collaborative editing, but the owner requires an account to join.
+          Open Numori and sign in, then follow this link again.
+        </p>
+        <a
+          href="/"
+          class="inline-block px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm rounded-lg transition-colors"
+        >
+          Go to Numori
+        </a>
       </div>
     </div>
 
@@ -144,13 +181,17 @@
           class="h-full flex flex-col max-w-5xl mx-auto w-full bg-white dark:bg-gray-925 relative z-0 shared-editor-shadow"
         >
           <NoteEditor
+            :key="collabHandle ? 'collab' : 'static'"
             :content="note.content"
-            :editable="false"
+            :collab-handle="collabHandle"
+            :presence="collabHandle ? { name: displayName } : null"
+            :editable="!!collabHandle"
             :show-inline="resultsPosition !== 'off'"
             :inline-align="resultsPosition === 'off' ? 'left' : resultsPosition"
             :markdown-mode="renderMarkdown ? 'full' : 'off'"
             :bordered="false"
             placeholder=""
+            @presence-update="onPresenceUpdate"
           />
         </main>
       </div>
@@ -171,14 +212,26 @@
 
 <script setup>
 import { deriveShareKey, decryptSharedNote, isEncrypted } from '~/utils/crypto.js'
+import { connectCollabNetwork, loadCollabDoc } from '~/utils/collab.js'
 
 const route = useRoute()
 const hash = route.params.hash
 const { apiFetch } = useApi()
+const { collabWsUrl } = useCollabConfig()
 
 const note = ref(null)
 const loading = ref(true)
 const error = ref(null)
+
+// Collaborative editing state
+const collabHandle = ref(null)
+const needsAccount = ref(false)
+const participants = ref([])
+// A friendly display name for presence/cursors (guests get a generated one).
+const displayName = ref(`Guest ${Math.floor(1000 + Math.random() * 9000)}`)
+const onPresenceUpdate = (list) => {
+  participants.value = list
+}
 
 // Encryption state
 const rawEncryptedData = ref(null)
@@ -256,6 +309,20 @@ const handlePrintConfirm = ({ withResults, blackAndWhite }) => {
 onMounted(async () => {
   try {
     const data = await apiFetch(`/api/share/${hash}`)
+
+    // Collaborative shares: connect to the sync service and open the live doc.
+    if (data.mode === 'collaborative') {
+      if (data.requiresAccount || !data.collabToken || !data.automergeUrl) {
+        needsAccount.value = true
+        note.value = { ...data, content: data.content || '' }
+      } else {
+        await connectCollabNetwork(collabWsUrl(), data.collabToken)
+        const h = await loadCollabDoc(data.automergeUrl)
+        collabHandle.value = h
+        note.value = { ...data, content: h.doc()?.text ?? data.content ?? '' }
+      }
+      return
+    }
 
     if (data.encrypted && isEncrypted(data.content)) {
       const urlKey = route.query.key

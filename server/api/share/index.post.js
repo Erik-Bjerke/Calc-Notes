@@ -1,6 +1,7 @@
 import { randomBytes, createHash } from 'node:crypto'
 import { optionalAuth } from '../../utils/auth.js'
 import { query } from '../../utils/db.js'
+import { signCollabToken, toDocumentId } from '../../utils/collabToken.js'
 
 // Ensure extra columns exist (idempotent, safe to call on every request)
 async function ensureExtraColumns() {
@@ -8,6 +9,15 @@ async function ensureExtraColumns() {
     () => {},
   )
   await query(`ALTER TABLE shared_notes ADD COLUMN IF NOT EXISTS delete_token_hash TEXT`).catch(
+    () => {},
+  )
+  await query(
+    `ALTER TABLE shared_notes ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'read-only'`,
+  ).catch(() => {})
+  await query(
+    `ALTER TABLE shared_notes ADD COLUMN IF NOT EXISTS allow_guests BOOLEAN NOT NULL DEFAULT FALSE`,
+  ).catch(() => {})
+  await query(`ALTER TABLE shared_notes ADD COLUMN IF NOT EXISTS automerge_url TEXT`).catch(
     () => {},
   )
 }
@@ -43,7 +53,14 @@ export default defineEventHandler(async (event) => {
     collectAnalytics,
     encrypted,
     passwordHint,
+    mode: rawMode,
+    allowGuests,
+    automergeUrl,
   } = body || {}
+
+  // Collaborative sharing: a share is 'read-only' (static snapshot) or
+  // 'collaborative' (real-time co-editing backed by an Automerge document).
+  const mode = rawMode === 'collaborative' ? 'collaborative' : 'read-only'
 
   if (!content && !title) {
     throw createError({ statusCode: 400, statusMessage: 'Title or content is required to share' })
@@ -103,6 +120,11 @@ export default defineEventHandler(async (event) => {
     'collect_analytics',
     'encrypted',
     'source_client_id',
+    // Collaborative sharing columns are appended AFTER source_client_id so the
+    // fixed base parameter indices (0-12) remain stable for existing callers.
+    'mode',
+    'allow_guests',
+    'automerge_url',
   ]
   const params = [
     hash,
@@ -118,6 +140,9 @@ export default defineEventHandler(async (event) => {
     collectAnalytics === true,
     encrypted === true,
     body.sourceClientId || null,
+    mode,
+    allowGuests === true,
+    mode === 'collaborative' ? automergeUrl || null : null,
   ]
 
   if (hint) {
@@ -133,9 +158,21 @@ export default defineEventHandler(async (event) => {
   const placeholders = params.map((_, i) => `$${i + 1}`).join(', ')
   await query(`INSERT INTO shared_notes (${columns.join(', ')}) VALUES (${placeholders})`, params)
 
-  const response = { hash }
+  const response = { hash, mode }
   if (deleteToken) {
     response.deleteToken = deleteToken
+  }
+
+  // For a collaborative share, hand the creator a capability token so they can
+  // connect to the sync service and start co-editing immediately.
+  if (mode === 'collaborative' && automergeUrl) {
+    response.automergeUrl = automergeUrl
+    response.collabToken = await signCollabToken({
+      documentId: toDocumentId(automergeUrl),
+      access: 'write',
+      kind: userId ? 'user' : 'guest',
+      name: name || sharerName || 'Anonymous',
+    })
   }
   return response
 })

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { query } from '../../utils/db.js'
 import { optionalAuth } from '../../utils/auth.js'
 import { enrichShareView } from '../../utils/geo.js'
+import { signCollabToken, toDocumentId } from '../../utils/collabToken.js'
 
 // Ensure password_hint column exists (idempotent, safe to call on every request)
 async function ensurePasswordHintColumn() {
@@ -26,7 +27,8 @@ export default defineEventHandler(async (event) => {
   const result = await query(
     `
     SELECT id, hash, title, description, tags, content, sharer_name, sharer_email,
-           anonymous, expires_at, created_at, collect_analytics, deleted_at, encrypted, password_hint
+           anonymous, expires_at, created_at, collect_analytics, deleted_at, encrypted, password_hint,
+           mode, allow_guests, automerge_url
     FROM shared_notes WHERE hash = $1
   `,
     [hash],
@@ -50,7 +52,10 @@ export default defineEventHandler(async (event) => {
     await recordEvent(event, row.id, 'view')
   }
 
-  return {
+  const mode = row.mode === 'collaborative' ? 'collaborative' : 'read-only'
+  const allowGuests = row.allow_guests === true
+
+  const response = {
     hash: row.hash,
     title: row.title,
     description: row.description,
@@ -66,7 +71,38 @@ export default defineEventHandler(async (event) => {
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     passwordHint: row.password_hint || null,
+    mode,
+    allowGuests,
+    automergeUrl: mode === 'collaborative' ? row.automerge_url || null : null,
   }
+
+  // For collaborative shares, mint a capability token so the viewer can connect
+  // to the sync service and co-edit. Guests (no account) are only admitted when
+  // the share allows guests; otherwise we signal that an account is required.
+  if (mode === 'collaborative' && response.automergeUrl) {
+    const auth = await optionalAuth(event)
+    if (auth) {
+      const meResult = await query('SELECT name FROM users WHERE id = $1', [auth.userId])
+      response.collabToken = await signCollabToken({
+        documentId: toDocumentId(response.automergeUrl),
+        access: 'write',
+        kind: 'user',
+        name: meResult.rows[0]?.name || 'User',
+      })
+    } else if (allowGuests) {
+      response.collabToken = await signCollabToken({
+        documentId: toDocumentId(response.automergeUrl),
+        access: 'write',
+        kind: 'guest',
+        name: 'Guest',
+      })
+    } else {
+      response.collabToken = null
+      response.requiresAccount = true
+    }
+  }
+
+  return response
 })
 
 /**

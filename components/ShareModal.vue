@@ -14,7 +14,11 @@
       <!-- Already shared / just shared state -->
       <div v-if="activeHash" class="space-y-3">
         <p class="text-sm text-gray-700 dark:text-gray-400">
-          Your note is shared. Anyone with this link can view it:
+          <template v-if="shareMode === 'collaborative'">
+            Your note is shared for collaborative editing. Anyone with this link can edit it in real
+            time:
+          </template>
+          <template v-else> Your note is shared. Anyone with this link can view it: </template>
         </p>
         <div class="flex items-center gap-2">
           <UiInput :model-value="activeShareUrl" readonly :validate="false" />
@@ -63,6 +67,57 @@
         <!-- Error -->
         <UiAlert v-if="error" color="red">{{ error }}</UiAlert>
 
+        <!-- Sharing mode: read-only vs collaborative -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+            Sharing mode
+          </label>
+          <div class="flex gap-2">
+            <UiButton
+              variant="outline"
+              size="xs"
+              class="flex-1"
+              :class="
+                shareMode === 'read-only'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                  : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              "
+              @click="shareMode = 'read-only'"
+            >
+              <Icon name="mdi:eye-outline" class="w-3 h-3 inline" /> Read-only
+            </UiButton>
+            <UiButton
+              variant="outline"
+              size="xs"
+              class="flex-1"
+              :class="
+                shareMode === 'collaborative'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                  : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              "
+              @click="shareMode = 'collaborative'"
+            >
+              <Icon name="mdi:account-group-outline" class="w-3 h-3 inline" /> Collaborative
+            </UiButton>
+          </div>
+          <p v-if="shareMode === 'collaborative'" class="text-xs text-amber-600 dark:text-amber-400">
+            <Icon name="mdi:information-outline" class="w-3 h-3 inline" />
+            Everyone with the link can edit in real time. Collaborative content is visible to the
+            server (not end-to-end encrypted).
+          </p>
+        </div>
+
+        <!-- Guest access (collaborative only) -->
+        <label
+          v-if="shareMode === 'collaborative'"
+          class="flex items-center gap-2 cursor-pointer"
+        >
+          <UiCheckbox v-model="allowGuests" />
+          <span class="text-sm text-gray-700 dark:text-gray-400">
+            Allow guests without an account
+          </span>
+        </label>
+
         <!-- Anonymous toggle -->
         <label class="flex items-center gap-2 cursor-pointer">
           <UiCheckbox v-model="anonymous" />
@@ -84,8 +139,9 @@
           Shared as {{ userName || userEmail }}
         </p>
 
-        <!-- Share password mode -->
-        <div class="space-y-2">
+        <!-- Share password mode (read-only shares only; collaborative content
+             must be readable by the sync service) -->
+        <div v-if="shareMode === 'read-only'" class="space-y-2">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-400"
             >Encryption</label
           >
@@ -132,7 +188,7 @@
         </div>
 
         <!-- Custom password input -->
-        <div v-if="sharePasswordMode === 'custom'" class="space-y-2">
+        <div v-if="shareMode === 'read-only' && sharePasswordMode === 'custom'" class="space-y-2">
           <UiFormField label="Share password">
             <UiInput
               v-model="sharePassword"
@@ -231,11 +287,17 @@ const emit = defineEmits(['close', 'unshare', 'open-analytics'])
 const { copy: clipboardCopy } = useClipboard()
 const { apiFetch, apiUrl } = useApi()
 
+const { collabWsUrl } = useCollabConfig()
+
 const anonymous = ref(false)
 const sharerName = ref('')
 const sharerEmail = ref('')
 const expiresInDays = ref(7)
 const collectAnalytics = ref(false)
+// Sharing mode: 'read-only' (static, E2E-encrypted snapshot) or 'collaborative'
+// (real-time co-editing via an Automerge document the sync service can read).
+const shareMode = ref('read-only')
+const allowGuests = ref(true)
 const sharing = ref(false)
 const error = ref(null)
 const newShareHash = ref(null)
@@ -276,12 +338,17 @@ watch(
       sharePassword.value = ''
       passwordHint.value = ''
       usedSharePassword.value = false
+      shareMode.value = 'read-only'
+      allowGuests.value = true
     }
   },
 )
 
 const handleShare = async () => {
   if (!props.note) return
+  if (shareMode.value === 'collaborative') {
+    return handleShareCollaborative()
+  }
   sharing.value = true
   error.value = null
 
@@ -367,6 +434,86 @@ const handleShare = async () => {
   }
 }
 
+/**
+ * Create a collaborative share: seed an Automerge document from the note's
+ * current body, register the share as collaborative, then connect the owner to
+ * the sync service so their edits propagate. Collaborative content is NOT
+ * end-to-end encrypted — the sync service must read it to merge changes.
+ */
+const handleShareCollaborative = async () => {
+  sharing.value = true
+  error.value = null
+  try {
+    // Lazily load the collaboration module (Automerge + WASM) only when a user
+    // actually creates a collaborative share, keeping it out of app startup.
+    const { createCollabDoc, connectCollabNetwork } = await import('~/utils/collab.js')
+    const handle = await createCollabDoc(props.note.content || '')
+    const automergeUrl = handle.url
+
+    const body = {
+      title: props.note.title,
+      description: props.note.description,
+      tags: props.note.tags,
+      content: props.note.content,
+      encrypted: false,
+      anonymous: anonymous.value,
+      expiresInDays: expiresInDays.value,
+      collectAnalytics: collectAnalytics.value,
+      sourceClientId: props.note.id,
+      mode: 'collaborative',
+      allowGuests: allowGuests.value,
+      automergeUrl,
+    }
+    if (!props.isLoggedIn && !anonymous.value) {
+      body.sharerName = sharerName.value || undefined
+      body.sharerEmail = sharerEmail.value || undefined
+    }
+
+    const data = await apiFetch('/api/share', { method: 'POST', headers: props.authHeaders, body })
+    newShareHash.value = data.hash
+
+    // Remember the note ↔ collaborative document mapping so the main editor can
+    // bind to the live CRDT (see Task 10 reconciliation).
+    try {
+      await db.collabDocs.put({
+        noteId: props.note.id,
+        hash: data.hash,
+        automergeUrl,
+        collabToken: data.collabToken || null,
+      })
+    } catch {
+      /* db unavailable */
+    }
+
+    // Connect the owner to the sync service so the document is published and
+    // the owner's future edits are shared in real time.
+    if (data.collabToken) {
+      try {
+        await connectCollabNetwork(collabWsUrl(), data.collabToken)
+      } catch {
+        /* network attach best-effort; offline edits sync on reconnect */
+      }
+    }
+
+    if (data.deleteToken) {
+      try {
+        await db.shareTokens.put({
+          hash: data.hash,
+          token: data.deleteToken,
+          noteId: props.note.id,
+          collectAnalytics: collectAnalytics.value,
+        })
+      } catch {
+        /* db unavailable */
+      }
+    }
+  } catch (err) {
+    error.value = err.data?.statusMessage || err.message || 'Failed to share'
+  } finally {
+    sharing.value = false
+  }
+}
+
 const handleUnshare = async () => {
   const hash = activeHash.value
   if (!hash) return
@@ -389,9 +536,10 @@ const handleUnshare = async () => {
       headers: props.authHeaders,
     })
 
-    // Clean up stored delete token
+    // Clean up stored delete token + any collaborative mapping
     try {
       await db.shareTokens.delete(hash)
+      await db.collabDocs.where('hash').equals(hash).delete()
     } catch {
       /* db unavailable */
     }

@@ -20,6 +20,7 @@ Do math with natural language and get results in real time as you type. Just wri
 - **Works everywhere** — PWA for desktop and mobile browsers, native iOS and Android via Capacitor, and desktop Linux/macOS/Windows via Electron
 - **Offline-first** — everything runs client-side with IndexedDB; no internet required for core features
 - **Share notes** — password-protected shared links with view analytics
+- **Real-time collaborative editing** — share a note for live co-editing with remote cursors and presence, across multiple devices, multiple users, and optional guests without an account (powered by Automerge CRDTs)
 - **App lock** — optional PIN/biometric lock for the native mobile apps with configurable auto-lock timeout
 - **Privacy screen** — automatic screen content hiding when the app is backgrounded on mobile
 - **i18n** — English and Spanish, easy to add more
@@ -53,6 +54,7 @@ npm run dev                 # http://localhost:3000
 | `npm run generate`       | Static site generation                          |
 | `npm run test`           | Run all tests once (vitest)                     |
 | `npm run test:watch`     | Run tests in watch mode                         |
+| `npm run collab`         | Start the collaborative editing sync service    |
 
 ## Project structure
 
@@ -201,6 +203,10 @@ npm run dev                 # http://localhost:3000
 │   ├── useAuthHandlers.js         # Auth event handlers (login, register, logout flows)
 │   ├── useBackButton.js           # Android back button handling
 │   ├── useCalculator.js           # Calculator composable (delegates to calculator/)
+│   ├── useCollab.js               # Vue wrapper around a collaborative Automerge document
+│   ├── useCollabConfig.js         # Resolves the collab sync service WebSocket URL
+│   ├── useCollabNote.js           # Binds the owner's editor to a note's collaborative doc
+│   ├── useCollabSession.js        # Join flow — open a shared note's live document
 │   ├── useCodeHighlight.js        # Syntax highlighting helpers
 │   ├── useDisplayFormatter.js     # Number / result display formatting
 │   ├── useEditorDecorations.js    # CodeMirror editor decorations
@@ -227,6 +233,9 @@ npm run dev                 # http://localhost:3000
 │   ├── useToast.js                # Toast notification state
 │   └── useWelcomeWizard.js        # First-run wizard state
 ├── utils/
+│   ├── automerge.js               # Automerge WASM bootstrap (inlined base64, lazy-loaded)
+│   ├── collab.js                  # Automerge Repo singleton: create/load docs, network attach
+│   ├── collabPresence.js          # Presence core + CodeMirror remote-cursor extension
 │   ├── crypto.js                  # E2E encryption: key derivation, AES-GCM encrypt/decrypt
 │   ├── keyboard-toolbar.js        # Native keyboard toolbar utilities
 │   └── normaliseName.js           # Name normalisation helpers
@@ -287,12 +296,22 @@ npm run dev                 # http://localhost:3000
 │   │   └── purge-sessions.js      # Periodic expired session cleanup
 │   └── utils/
 │       ├── auth.js                # JWT sign / verify, requireAuth helper
+│       ├── collabToken.js         # Mint / verify collaborative editing capability tokens
 │       ├── db.js                  # PostgreSQL connection pool + query helper
 │       ├── email.js               # Email sending via nodemailer (SMTP)
 │       ├── geo.js                 # Geolocation from request headers
 │       ├── migrate.js             # SQL migration runner
 │       ├── session.js             # Session creation, validation, revocation helpers
 │       └── syncBroadcast.js       # SSE broadcast to connected clients
+├── collab-server/                 # Standalone Automerge WebSocket sync service
+│   ├── index.mjs                  # CLI entrypoint (reads env, starts the server)
+│   ├── server.mjs                 # createCollabServer — sync + auth + idle eviction
+│   ├── auth.mjs                   # Connection auth + capability-based sharePolicy
+│   ├── jwt.mjs                    # Dependency-free HS256 token verification
+│   ├── db.mjs                     # PostgreSQL pool for the sync service
+│   ├── storage/                   # StorageAdapter over PostgreSQL (collab_chunks)
+│   ├── Dockerfile                 # Small standalone image for the service
+│   └── package.json               # Service dependencies
 ├── electron/
 │   ├── main.js                    # Electron main process entry
 │   └── preload.cjs                # Electron preload script
@@ -558,9 +577,57 @@ The following items are known trade-offs or areas for future improvement:
 
 6. **Legacy password fallback** — During the migration period, the login endpoint accepts both `authKey` and raw `password`. The raw password is sent over TLS but does reach the server. Once all accounts are migrated, the raw password fallback should be removed.
 
+## Collaborative editing
+
+Notes can be shared for **real-time collaborative editing** using [Automerge](https://automerge.org/) CRDTs. Multiple people — the owner across several devices, other registered users, and optional guests without an account — can edit the same note's body simultaneously, with live remote cursors and a participant list. Concurrent edits merge conflict-free; only the note **body** becomes a CRDT, while metadata (title, tags, groups, ordering) keeps flowing through the existing last-write-wins encrypted sync.
+
+### Architecture
+
+```mermaid
+flowchart LR
+    subgraph A[Owner / User B / Guest]
+      CM[CodeMirror + Automerge plugin]
+      REPO[automerge-repo + IndexedDB storage]
+      CM --> REPO
+    end
+    COLLAB[Collab sync service — WebSocket + token auth]
+    PG[(PostgreSQL — collab_chunks + shared_notes)]
+    NITRO[Nitro API — shares, capability tokens, LWW metadata]
+
+    REPO <-- WebSocket sync / presence --> COLLAB
+    COLLAB --> PG
+    NITRO --> PG
+    A <-- REST: share mgmt, metadata sync --> NITRO
+```
+
+- **Client** — `utils/collab.js` owns a single `automerge-repo` `Repo` backed by IndexedDB (so collaborative docs work offline and survive reloads). The WASM core is inlined as base64 and lazy-loaded, so it never affects normal startup and works under the `capacitor://` and `app://` (Electron) origins where fetching a separate `.wasm` asset would fail. The CodeMirror editor binds to the document via `@automerge/automerge-codemirror`.
+- **Sync service** (`collab-server/`) — a small standalone Node process, separate from the Nitro API so the realtime workload scales independently. It relays Automerge's compact sync-protocol deltas between peers and persists documents to PostgreSQL. Idle rooms are evicted from memory but remain durable, keeping memory bounded.
+- **Sharing** — a share is either **read-only** (the existing static, E2E-encrypted snapshot) or **collaborative**. Collaborative content is _not_ end-to-end encrypted, because the sync service must read it to merge edits.
+
+### Security model
+
+- **Connection auth** — every WebSocket connection must present a valid, unexpired capability token (a JWT signed by the API with the shared `JWT_SECRET`, `purpose: 'collab'`). Tokens are minted per share; guests only receive one when the share allows guest access.
+- **Room access** — Automerge document IDs are unguessable 128-bit identifiers only revealed through a share link, so "knowing the document ID" is the capability to access it — the same posture as the app's existing share links.
+
+### Running it
+
+```bash
+# 1. Start Postgres (shared with the API)
+npm run dev:db
+
+# 2. Start the sync service (reads JWT_SECRET + POSTGRES_* + COLLAB_* from .env)
+npm run collab              # listens on COLLAB_PORT (default 3030)
+
+# 3. Start the app; point it at the service
+#    NUXT_PUBLIC_COLLAB_WS_URL=ws://localhost:3030 in .env
+npm run dev
+```
+
+In production the service is a separate container (`collab` in `docker-compose.yml`, built from `collab-server/Dockerfile`). Reverse-proxy `wss://<host>/collab` to it, or set `NUXT_PUBLIC_COLLAB_WS_URL` explicitly. Native (Capacitor) and Electron builds **must** set `NUXT_PUBLIC_COLLAB_WS_URL` (or an `https` `NUXT_PUBLIC_API_BASE`), since their origins can't be turned into a WebSocket URL. See `.env.example` for all `COLLAB_*` variables.
+
 ## Testing
 
-Tests are colocated alongside their source files in `__tests__/` directories — 709 tests across 31 test files covering calculator features, composables, server APIs, and utilities.
+Tests are colocated alongside their source files in `__tests__/` directories — 820+ tests across 45 test files covering calculator features, composables, server APIs, utilities, and collaborative editing (CRDT sync, the sync service, auth, presence, and durability).
 
 ```bash
 npm run test          # single run
@@ -591,8 +658,11 @@ composables/calculator/__tests__/   # Calculator engine tests (arithmetic, units
 composables/__tests__/              # Composable tests (code highlight, file actions, locale, language)
 server/api/auth/__tests__/          # Auth API tests (register, login, password, delete)
 server/api/notes/__tests__/         # Notes API tests (sync, logout safety)
-server/api/share/__tests__/         # Share API tests (create, get)
-utils/__tests__/                    # Utility tests (crypto, crypto integration)
+server/api/share/__tests__/         # Share API tests (create, get, collaborative)
+server/utils/__tests__/             # Server util tests (collab capability tokens)
+utils/__tests__/                    # Utility tests (crypto, Automerge, CRDT sync, presence)
+composables/__tests__/              # Composable tests (incl. collab config URL derivation)
+collab-server/__tests__/            # Sync service tests (sync, auth, Postgres durability, E2E)
 ```
 
 ### Writing new tests
@@ -672,6 +742,14 @@ docker run -p 3000:3000 numori-notes
 
 The Dockerfile uses a multi-stage build: build stage with full Node.js, production stage with just the `.output` directory running as a non-root user.
 
+For the full stack (app + PostgreSQL + collaborative sync service), use Compose:
+
+```bash
+docker compose up --build
+```
+
+This starts three services: `app` (Nitro API + SPA on port 3000), `postgres`, and `collab` (the Automerge sync service on port 3030, built from `collab-server/Dockerfile`). Set `JWT_SECRET`, `POSTGRES_*`, and `NUXT_PUBLIC_COLLAB_WS_URL` in your environment — see `.env.example`.
+
 ## Deep linking (Android App Links / iOS Universal Links)
 
 The native apps are configured to open `https://notes.numori.app` links directly (e.g. shared note URLs like `/shared/:hash?key=...`).
@@ -729,7 +807,7 @@ Apple's AASA validator: `https://app-site-association.cdn-apple.com/a/v1/notes.n
 
 - All calculator logic goes in `composables/calculator/`
 - Every new feature must have corresponding unit tests
-- Run `npm run test` before committing — all 709+ tests must pass
+- Run `npm run test` before committing — all tests must pass
 - The app is a client-side SPA — no server-side logic for calculator features
 - Use Tailwind utility classes for styling, follow the existing color palette
 - All user-facing strings must use i18n keys, not hardcoded text

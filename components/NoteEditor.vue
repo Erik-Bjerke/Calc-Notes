@@ -92,6 +92,8 @@ import { Compartment, EditorSelection, EditorState, Prec } from '@codemirror/sta
 import { foldGutter as cmFoldGutter, indentUnit } from '@codemirror/language'
 import { closeBrackets as cmCloseBrackets } from '@codemirror/autocomplete'
 import { undo as cmUndo, redo as cmRedo, undoDepth, redoDepth } from '@codemirror/commands'
+import { automergeSyncPlugin } from '@automerge/automerge-codemirror'
+import { collabPresenceExtension, collabPresenceTheme } from '~/utils/collabPresence.js'
 import { numoriLanguage, numoriLightTheme, numoriDarkTheme } from '~/composables/useNumoriLanguage'
 import { formatDisplay } from '~/composables/useDisplayFormatter'
 import {
@@ -117,15 +119,28 @@ const props = defineProps({
   markdownMode: { type: String, default: 'full' },
   shortcutHandlers: { type: Object, default: null },
   editable: { type: Boolean, default: true },
+  // When set, the note body is a collaborative Automerge document and the
+  // editor binds directly to it via the Automerge codemirror plugin. In this
+  // mode `content` is NOT pushed into the editor — the CRDT owns the text.
+  // The parent must re-mount NoteEditor (e.g. via :key) when this handle
+  // changes so the plugin is present at editor creation with the right doc.
+  collabHandle: { type: Object, default: null },
+  // Local participant identity for presence/cursors, e.g. { name, color }.
+  // When set alongside collabHandle, remote carets/selections are rendered, the
+  // local caret is broadcast, and participant changes emit `presence-update`.
+  presence: { type: Object, default: null },
 })
 
-const emit = defineEmits(['update:content'])
+const emit = defineEmits(['update:content', 'presence-update'])
 
 const displayLines = ref([])
 const rawLines = ref([])
 const currentLine = ref(0)
 const lineHeight = computed(() => props.localePreferences?.editorLineHeight ?? 19)
-const localContent = ref(props.content)
+// In collaborative mode the initial document must match the CRDT text exactly,
+// otherwise nuxt-codemirror's value-sync would full-replace (clobber) the doc.
+const initialContent = props.collabHandle ? (props.collabHandle.doc()?.text ?? '') : props.content
+const localContent = ref(initialContent)
 const editorRef = ref(null)
 const editorReady = ref(false)
 let editorView = null
@@ -320,6 +335,23 @@ const cmExtensions = computed(() => [
   editableCompartment.of(buildEditable()),
   inlineResultField,
   mdPreviewField,
+  // Collaborative binding: when a CRDT handle is present, the plugin keeps the
+  // CodeMirror document and the Automerge `text` field in sync bidirectionally.
+  ...(props.collabHandle
+    ? [automergeSyncPlugin({ handle: props.collabHandle, path: ['text'] })]
+    : []),
+  // Live presence: remote carets/selections + local caret broadcast.
+  ...(props.collabHandle && props.presence
+    ? [
+        collabPresenceTheme,
+        collabPresenceExtension({
+          handle: props.collabHandle,
+          name: props.presence.name,
+          color: props.presence.color,
+          onParticipants: (list) => emit('presence-update', list),
+        }),
+      ]
+    : []),
   buildKeymap(),
   EditorView.updateListener.of((update) => {
     if (update.selectionSet || update.docChanged) {
@@ -581,6 +613,9 @@ watch(currentLine, () => {
 // External content changes
 let suppressEmit = false
 watch(() => props.content, (newContent) => {
+  // In collaborative mode the Automerge document is the source of truth for the
+  // body; never push `content` into the editor or it would fight the CRDT.
+  if (props.collabHandle) return
   if (localContent.value === newContent) return
   if (editorView) {
     const currentDoc = editorView.state.doc.toString()

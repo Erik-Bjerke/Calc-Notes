@@ -170,8 +170,11 @@
           <div class="flex-1 min-h-0 relative">
             <NoteEditor
               ref="editorRef"
+              :key="collabHandle ? `collab-${currentNote.id}` : 'plain'"
               :content="currentNote.content"
               :note-id="currentNote.id"
+              :collab-handle="collabHandle"
+              :presence="collabHandle ? { name: auth.user.value?.name || 'You' } : null"
               :editable="!currentNoteReadOnly"
               :show-inline="showInlineResults !== 'off'"
               :inline-align="showInlineResults === 'off' ? 'left' : showInlineResults"
@@ -355,6 +358,11 @@ const fileActions = useFileActions()
 const { evaluateLines } = useCalculator()
 const localePrefs = useLocalePreferences()
 const welcomeWizard = useWelcomeWizard()
+
+// Bind the editor to a note's collaborative CRDT document when it has been
+// shared for real-time editing (owner side). collabHandle is null for normal
+// notes, in which case the editor behaves exactly as before.
+const { collabHandle } = useCollabNote(currentNote)
 const auth = useAuth()
 const { apiFetch } = useApi()
 const toast = useToast()
@@ -725,7 +733,13 @@ const currentNoteReadOnly = computed(() => {
 
 const updateContent = (content) => {
   if (!currentNote.value || currentNoteReadOnly.value) return
+  // Always mirror the body into the local note so the list, search and offline
+  // reading stay current.
   updateNoteContent(currentNote.value.id, content)
+  // For collaborative notes the CRDT + sync service own the body, so we skip
+  // pushing it through the last-write-wins sync (metadata still syncs via
+  // updateMeta). For normal notes, sync as before.
+  if (collabHandle.value) return
   debouncedSync(currentNote.value.id)
 }
 

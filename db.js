@@ -154,4 +154,17 @@ db.version(6)
     }
   })
 
+// ── Version 7 — collaborative document mapping ─────────────────────────
+// Maps a local note to the Automerge collaborative document backing its
+// content when it is shared for real-time co-editing.
+//   noteId       — local note id (primary key)
+//   hash         — the share hash
+//   automergeUrl — the collaborative document url (automerge:...)
+//   collabToken  — capability token for connecting to the sync service
+// Presence of a row means the note's body is a CRDT synced with the sync
+// service; absence means it uses the normal last-write-wins encrypted sync.
+db.version(7).stores({
+  collabDocs: 'noteId, hash, automergeUrl',
+})
+
 export default db
