@@ -4,6 +4,10 @@
   "main": "electron/main.js",
   "private": true,
   "version": "0.25.0",
+  "overrides": {
+    "@codemirror/state": "$@codemirror/state",
+    "@codemirror/view": "$@codemirror/view"
+  },
   "description": "Free, open-source notes app with a built-in natural language calculator. Do math as you write, export to multiple formats, and sync with end-to-end encryption.",
   "author": {
     "name": "Erik Bjerke",

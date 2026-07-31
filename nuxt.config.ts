@@ -330,6 +330,12 @@ export default defineNuxtConfig({
   },
   vite: {
     resolve: {
+      // Force a single instance of CodeMirror's core packages. nuxt-codemirror
+      // nests its own @codemirror/state|view, and the Automerge codemirror
+      // plugin uses the top-level copy — two instances break CodeMirror's
+      // class-identity-based extension system ("object is not the right class").
+      // (Also enforced at install time via package.json "overrides".)
+      dedupe: ['@codemirror/state', '@codemirror/view'],
       alias: [
         // Automerge ships several entrypoints. `automerge-repo` and the
         // codemirror plugin import the bare `@automerge/automerge`, whose
