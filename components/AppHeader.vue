@@ -1,6 +1,6 @@
 <template>
   <header
-    class="bg-gray-100 dark:bg-gray-900 flex-shrink-0"
+    class="bg-gray-100 dark:bg-gray-900 flex-shrink-0 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.15)] dark:shadow-[0_2px_8px_-4px_rgba(0,0,0,0.5)]"
     :class="{ 'electron-drag': isElectron }"
     :style="{
       paddingTop: 'env(safe-area-inset-top, 0px)',
