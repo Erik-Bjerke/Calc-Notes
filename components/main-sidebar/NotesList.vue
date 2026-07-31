@@ -5,8 +5,9 @@
     @dragover.prevent="$emit('drag-over-list', $event)"
     @drop.prevent="$emit('drop')"
   >
+    <!-- ── Empty state ── -->
     <div
-      v-if="sidebarItems.length === 0"
+      v-if="displayItems.length === 0"
       class="p-4 text-center text-sm text-gray-500 dark:text-gray-400 mt-8"
     >
       <template v-if="showBin">
@@ -19,106 +20,91 @@
         <p>No archived notes</p>
         <p class="text-xs mt-1 text-gray-400 dark:text-gray-500">Archived notes will appear here</p>
       </template>
-      <template v-else>
-        No notes found
-      </template>
+      <template v-else> No notes found </template>
     </div>
 
     <template v-for="(item, idx) in displayItems" :key="item.id">
-      <!-- ── Drop gap indicator ── -->
+      <!-- ── Insertion line (before this row) ── -->
       <div
-        class="drag-gap-el overflow-hidden rounded-lg border-dashed border-primary-300 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-900/20"
-        :style="gapStyle(idx)"
+        v-if="insertionIndex === idx"
+        class="tree-drop-line bg-primary-500"
+        :style="lineStyle(insertionDepth)"
       />
 
-      <!-- ── Group header ── -->
+      <!-- ── Group / folder row ── -->
       <div
         v-if="item.kind === 'group'"
-        v-show="!isDraggedItem(item.id)"
+        v-show="!isHidden(item.id)"
         :data-item-id="item.id"
-        :data-kind="'group'"
+        data-kind="group"
+        :data-depth="item.depth"
         :draggable="canReorder && !isTouchDevice"
         class="relative"
-        :class="{ 'opacity-30': isTouchDraggedItem(item.id) }"
         @dragstart="$emit('drag-start', $event, item.id, 'group')"
         @dragend="$emit('drag-end')"
         @touchstart.passive="$emit('touch-start', $event, item.id, 'group')"
       >
+        <span
+          v-for="(gx, gi) in guideOffsets(item.depth)"
+          :key="gi"
+          class="tree-guide"
+          :style="{ left: gx + 'px' }"
+        />
         <GroupListItem
           :group="item.data"
-          :note-count="getGroupNotes(item.id).length"
-          :drop-indicator="dropTarget?.id === item.id ? dropTarget?.position : null"
+          :note-count="groupCount(item.id)"
+          :level="item.depth + 1"
+          :max-depth="maxGroupDepth"
+          :indent="indentPx(item.depth)"
+          :drop-indicator="dropInsideId === item.id ? 'inside' : null"
           @toggle-collapse="(id) => $emit('toggle-group-collapse', id)"
           @edit="(id) => $emit('edit-group', id)"
           @delete="(id) => $emit('delete-group', id)"
-        />
-      </div>
-
-      <!-- ── Grouped note (child of a group) ── -->
-      <div
-        v-else-if="item.kind === 'grouped-note'"
-        v-show="!isDraggedItem(item.id)"
-        :data-item-id="item.id"
-        :data-kind="'note'"
-        :data-group="item.parentGroupId"
-        :draggable="canReorder && !isTouchDevice"
-        class="relative pl-4 border-l-2 border-l-primary-200 dark:border-l-primary-800/50"
-        :class="{ 'opacity-30': isTouchDraggedItem(item.id) }"
-        @dragstart="$emit('drag-start', $event, item.id, 'note')"
-        @dragend="$emit('drag-end')"
-        @touchstart.passive="$emit('touch-start', $event, item.id, 'note')"
-      >
-        <NoteListItem
-          :note="item.data"
-          :active="item.data.id === currentNoteId"
-          :select-mode="selectMode"
-          :selected="selectedIds.has(item.data.id)"
-          :shared="sharedNoteIds.includes(item.data.id)"
-          :share-hash="sharedNotesMap.get(item.data.id) || null"
-          :analytics-hash="analyticsNotesMap.get(item.data.id) || null"
-          :pending="pendingNoteIds.has(item.data.id)"
-          :is-logged-in="isLoggedIn"
-          :bin-mode="showBin"
-          @select="(id) => $emit('select-note', id)"
-          @delete="(id) => $emit('delete-note', id)"
-          @share="(id) => $emit('share-note', id)"
-          @unshare="(id) => $emit('unshare-note', id)"
-          @properties="(id) => $emit('show-properties', id)"
-          @open-analytics="(hash) => $emit('open-analytics', hash)"
-          @duplicate="(id) => $emit('duplicate-note', id)"
-          @export="(id) => $emit('export-note', id)"
-          @copy-to-clipboard="(id) => $emit('copy-to-clipboard', id)"
-          @print="(id) => $emit('print-note', id)"
-          @archive="(id) => $emit('archive-note', id)"
-          @unarchive="(id) => $emit('unarchive-note', id)"
-          @toggle-select="(id) => $emit('toggle-note-selection', id)"
-          @add-to-group="(id) => $emit('add-to-group', id)"
-          @restore="(id) => $emit('restore-note', id)"
-          @permanent-delete="(id) => $emit('permanent-delete-note', id)"
+          @add-subgroup="(id) => $emit('add-subgroup', id)"
         />
       </div>
 
       <!-- ── Empty group placeholder ── -->
       <div
         v-else-if="item.kind === 'group-empty'"
-        class="pl-4 border-l-2 border-l-primary-200 dark:border-l-primary-800/50 px-4 py-3 text-xs text-gray-400 dark:text-gray-500 italic"
+        :data-item-id="item.id"
+        data-kind="empty"
+        :data-depth="item.depth"
+        class="relative flex items-center h-8 text-[13px] italic text-gray-400 dark:text-gray-600"
+        :class="{
+          'bg-primary-50/70 dark:bg-primary-500/15 ring-1 ring-inset ring-primary-400/70':
+            dropInsideId === item.parentId,
+        }"
+        :style="{ paddingLeft: indentPx(item.depth) + 16 + 'px' }"
       >
-        No notes in this group
+        <span
+          v-for="(gx, gi) in guideOffsets(item.depth)"
+          :key="gi"
+          class="tree-guide"
+          :style="{ left: gx + 'px' }"
+        />
+        (empty)
       </div>
 
-      <!-- ── Ungrouped note ── -->
+      <!-- ── Note (leaf) ── -->
       <div
         v-else
-        v-show="!isDraggedItem(item.id)"
+        v-show="!isHidden(item.id)"
         :data-item-id="item.id"
-        :data-kind="'note'"
+        data-kind="note"
+        :data-depth="item.depth"
         :draggable="canReorder && !isTouchDevice"
         class="relative"
-        :class="{ 'opacity-30': isTouchDraggedItem(item.id) }"
         @dragstart="$emit('drag-start', $event, item.id, 'note')"
         @dragend="$emit('drag-end')"
         @touchstart.passive="$emit('touch-start', $event, item.id, 'note')"
       >
+        <span
+          v-for="(gx, gi) in guideOffsets(item.depth)"
+          :key="gi"
+          class="tree-guide"
+          :style="{ left: gx + 'px' }"
+        />
         <NoteListItem
           :note="item.data"
           :active="item.data.id === currentNoteId"
@@ -130,6 +116,7 @@
           :pending="pendingNoteIds.has(item.data.id)"
           :is-logged-in="isLoggedIn"
           :bin-mode="showBin"
+          :indent="indentPx(item.depth)"
           @select="(id) => $emit('select-note', id)"
           @delete="(id) => $emit('delete-note', id)"
           @share="(id) => $emit('share-note', id)"
@@ -150,10 +137,11 @@
       </div>
     </template>
 
-    <!-- ── Bottom gap + drop zone ── -->
+    <!-- ── Bottom insertion line + drop zone ── -->
     <div
-      class="drag-gap-el overflow-hidden rounded-lg border-dashed border-primary-300 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-900/20 mx-1.5"
-      :style="gapStyle(displayItems.length)"
+      v-if="insertionIndex === displayItems.length"
+      class="tree-drop-line bg-primary-500 ring-1 ring-primary-300 dark:ring-primary-700"
+      :style="lineStyle(0)"
     />
     <div v-if="draggingId" class="min-h-[60px]" />
   </div>
@@ -161,7 +149,6 @@
 
 <script setup>
 defineProps({
-  sidebarItems: { type: Array, required: true },
   displayItems: { type: Array, required: true },
   showBin: { type: Boolean, required: true },
   showArchive: { type: Boolean, required: true },
@@ -175,12 +162,13 @@ defineProps({
   isLoggedIn: { type: Boolean, required: true },
   canReorder: { type: Boolean, required: true },
   isTouchDevice: { type: Boolean, required: true },
+  maxGroupDepth: { type: Number, default: 3 },
   draggingId: { type: [String, null], default: null },
-  dropTarget: { type: Object, default: null },
-  getGroupNotes: { type: Function, required: true },
-  gapStyle: { type: Function, required: true },
-  isDraggedItem: { type: Function, required: true },
-  isTouchDraggedItem: { type: Function, required: true },
+  dropInsideId: { type: [String, null], default: null },
+  insertionIndex: { type: Number, default: -1 },
+  insertionDepth: { type: Number, default: 0 },
+  isHidden: { type: Function, required: true },
+  groupCount: { type: Function, required: true },
 })
 
 defineEmits([
@@ -192,6 +180,7 @@ defineEmits([
   'toggle-group-collapse',
   'edit-group',
   'delete-group',
+  'add-subgroup',
   'select-note',
   'delete-note',
   'share-note',
@@ -210,17 +199,42 @@ defineEmits([
   'permanent-delete-note',
 ])
 
-const listRef = ref(null)
+const BASE = 4 // px left padding at depth 0
+const STEP = 16 // px indent per nesting level (one twisty width)
 
+// Left padding applied inside a row for its nesting depth.
+const indentPx = (depth) => BASE + depth * STEP
+
+// X offsets (px) for the vertical indent guides of a row at a given depth —
+// one guide per ancestor level, centered in that level's twisty column.
+const guideOffsets = (depth) => Array.from({ length: depth }, (_, i) => BASE + i * STEP + 8)
+
+// Position the drop insertion line at the content start of its nesting level.
+const lineStyle = (depth) => `margin-left: ${BASE + depth * STEP + 16}px;`
+
+const listRef = ref(null)
 defineExpose({ listRef })
 </script>
 
 <style scoped>
-.drag-gap-el {
-  transition:
-    height 0.15s ease-out,
-    margin 0.15s ease-out,
-    border-width 0.15s ease-out;
+/* VSCode-style vertical indent guides */
+.tree-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  z-index: 5;
+  pointer-events: none;
+  background-color: rgb(229 231 235); /* gray-200 */
+}
+:global(.dark) .tree-guide {
+  background-color: rgb(55 65 81 / 0.6); /* gray-700 */
+}
+.tree-drop-line {
+  height: 2px;
+  margin-top: 1px;
+  margin-bottom: 1px;
   margin-right: 6px;
+  border-radius: 2px;
 }
 </style>

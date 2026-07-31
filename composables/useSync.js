@@ -215,6 +215,7 @@ export const useSync = (
             name: g.name,
             internalName: g.internalName || '',
             sortOrder: g.sortOrder ?? 0,
+            parentId: g.parentId ?? null,
             collapsed: g.collapsed ?? false,
             createdAt: g.createdAt,
             updatedAt: g.updatedAt,
@@ -252,6 +253,10 @@ export const useSync = (
                   existing.collapsed = remote.collapsed ?? false
                 if (existing.sortOrder !== (remote.sortOrder ?? 0))
                   existing.sortOrder = remote.sortOrder ?? 0
+                // Only adopt a remote parentId when the server actually sends one,
+                // so older servers that don't know about nesting don't flatten the tree.
+                if (remote.parentId !== undefined && existing.parentId !== remote.parentId)
+                  existing.parentId = remote.parentId
                 existing.updatedAt = remote.updatedAt
               }
             } else {
@@ -260,6 +265,7 @@ export const useSync = (
                 name: remote.name,
                 internalName: remote.internalName || '',
                 sortOrder: remote.sortOrder ?? 0,
+                parentId: remote.parentId ?? null,
                 collapsed: remote.collapsed ?? false,
                 createdAt: remote.createdAt,
                 updatedAt: remote.updatedAt,

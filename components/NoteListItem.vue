@@ -1,95 +1,87 @@
 <template>
   <div
-    class="relative border-b border-gray-200 dark:border-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-850 transition-colors"
+    class="tree-node group relative flex items-center h-9 cursor-pointer select-none text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/70 transition-colors"
     :class="{
-      'bg-white dark:bg-gray-925 border-l-4 border-l-primary-500': active && !selectMode,
+      'bg-primary-100/80 dark:bg-primary-500/20 text-gray-900 dark:text-gray-100':
+        active && !selectMode,
       'bg-primary-50 dark:bg-primary-900/20': selectMode && selected,
     }"
+    :style="{ paddingLeft: indent + 'px', paddingRight: '2px' }"
+    :title="note.title || 'Untitled'"
     @click="handleClick"
   >
-    <!-- Sync pending dot — left side, vertically centered, only for logged-in users -->
+    <!-- Active row accent bar (VSCode-style) -->
+    <span
+      v-if="active && !selectMode"
+      class="absolute left-0 top-0 bottom-0 w-[2px] bg-primary-500"
+    />
+
+    <!-- Select-mode checkbox -->
+    <div
+      v-if="selectMode"
+      class="flex-shrink-0 mr-1 flex items-center justify-center"
+      @click.stop="$emit('toggle-select', note.id)"
+    >
+      <div
+        class="w-4 h-4 rounded border-2 flex items-center justify-center transition-colors"
+        :class="
+          selected
+            ? 'bg-primary-600 border-primary-600'
+            : 'border-gray-300 dark:border-gray-600'
+        "
+      >
+        <Icon v-if="selected" name="mdi:check" class="w-3 h-3 text-white" />
+      </div>
+    </div>
+
+    <!-- Empty twisty slot (aligns note icons under folder icons) -->
+    <span v-else class="w-4 flex-shrink-0" />
+
+    <!-- File icon -->
+    <Icon
+      :name="shared ? 'mdi:file-link-outline' : 'mdi:file-document-outline'"
+      class="w-4 h-4 flex-shrink-0 mr-1.5"
+      :class="shared ? 'text-primary-500 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'"
+    />
+
+    <!-- Label -->
+    <span class="flex-1 min-w-0 truncate text-[13px] leading-none">
+      {{ note.title || 'Untitled' }}
+    </span>
+
+    <!-- Sync pending dot -->
     <span
       v-if="pending && isLoggedIn"
-      class="absolute left-1.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500"
+      class="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 mx-1"
       title="Not synced"
     />
-    <div class="p-4" :class="{ 'pl-6': pending && isLoggedIn }">
-      <div class="flex items-start justify-between gap-2">
-        <!-- Animated checkbox for select mode -->
-        <Transition
-          enter-active-class="transition-all duration-200 ease-out"
-          enter-from-class="opacity-0 scale-0 w-0 mr-0"
-          enter-to-class="opacity-100 scale-100 w-5 mr-1"
-          leave-active-class="transition-all duration-150 ease-in"
-          leave-from-class="opacity-100 scale-100 w-5 mr-1"
-          leave-to-class="opacity-0 scale-0 w-0 mr-0"
-        >
-          <div
-            v-if="selectMode"
-            class="flex-shrink-0 pt-0.5 mr-1"
-            @click.stop="$emit('toggle-select', note.id)"
-          >
-            <div
-              class="w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-150"
-              :class="
-                selected
-                  ? 'bg-primary-600 border-primary-600 scale-110'
-                  : 'border-gray-300 dark:border-gray-600 scale-100'
-              "
-            >
-              <Transition
-                enter-active-class="transition-all duration-150 ease-out"
-                enter-from-class="opacity-0 scale-0"
-                enter-to-class="opacity-100 scale-100"
-                leave-active-class="transition-all duration-100 ease-in"
-                leave-from-class="opacity-100 scale-100"
-                leave-to-class="opacity-0 scale-0"
-              >
-                <Icon v-if="selected" name="mdi:check" class="w-3.5 h-3.5 text-white" />
-              </Transition>
-            </div>
-          </div>
-        </Transition>
 
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-1.5">
-            <Icon
-              v-if="shared"
-              name="mdi:link-variant"
-              class="w-3.5 h-3.5 flex-shrink-0 text-primary-500 dark:text-primary-400"
-              title="Shared"
-            />
-            <h3 class="font-medium text-gray-900 dark:text-gray-400 truncate">
-              {{ note.title || 'Untitled' }}
-            </h3>
-          </div>
-          <p v-if="note.description" class="text-sm text-gray-600 dark:text-gray-500 truncate mt-1">
-            {{ note.description }}
-          </p>
-          <div v-if="note.tags && note.tags.length" class="flex flex-wrap gap-1 mt-1.5">
-            <UiBadge v-for="tag in note.tags" :key="tag">
-              {{ tag }}
-            </UiBadge>
-          </div>
-          <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">
-            {{ formatDate(note.updatedAt) }}
-          </p>
-        </div>
-
-        <!-- Three-dots menu -->
-        <div v-if="!selectMode" class="flex-shrink-0 self-center">
-          <UiDropdown
-            ref="menuDropdownRef"
-            width="w-48"
-            align="right"
-            :drop="dropUp ? 'up' : 'down'"
-            @open="onMenuOpen"
+    <!-- Three-dots menu (reveals on hover / focus) -->
+    <div
+      v-if="!selectMode"
+      class="flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+      :class="{ 'opacity-100': menuOpen }"
+    >
+      <UiDropdown
+        ref="menuDropdownRef"
+        width="w-48"
+        align="right"
+        :drop="dropUp ? 'up' : 'down'"
+        @open="onMenuOpen"
+        @close="menuOpen = false"
+      >
+        <template #trigger="{ toggle }">
+          <UiButton
+            variant="ghost"
+            color="gray"
+            icon-only
+            title="Actions"
+            class="!p-0.5"
+            @click.stop="toggle"
           >
-            <template #trigger="{ toggle }">
-              <UiButton variant="ghost" color="gray" icon-only title="Actions" @click.stop="toggle">
-                <Icon name="mdi:dots-vertical" class="w-5 h-5" />
-              </UiButton>
-            </template>
+            <Icon name="mdi:dots-horizontal" class="w-4 h-4" />
+          </UiButton>
+        </template>
 
             <!-- Bin mode: simplified menu -->
             <template v-if="binMode">
@@ -164,8 +156,6 @@
             </template>
           </UiDropdown>
         </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -181,6 +171,7 @@ const props = defineProps({
   pending: { type: Boolean, default: false },
   isLoggedIn: { type: Boolean, default: false },
   binMode: { type: Boolean, default: false },
+  indent: { type: Number, default: 8 },
 })
 
 const emit = defineEmits([
@@ -208,6 +199,7 @@ const { apiUrl } = useApi()
 const menuDropdownRef = ref(null)
 const dropUp = ref(false)
 const copied = ref(false)
+const menuOpen = ref(false)
 const menuId = Math.random().toString(36).slice(2)
 
 const handleClick = () => {
@@ -219,6 +211,7 @@ const handleClick = () => {
 }
 
 const onMenuOpen = () => {
+  menuOpen.value = true
   document.dispatchEvent(new CustomEvent('close-all-menus', { detail: { sourceId: menuId } }))
   const el = menuDropdownRef.value?.$el
   if (el) {
@@ -267,16 +260,4 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('close-all-menus', onCloseAllMenus)
 })
-
-const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diff = now - date
-
-  if (diff < 60000) return 'Just now'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
-  if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`
-  return date.toLocaleDateString()
-}
 </script>

@@ -1,44 +1,47 @@
 <template>
-  <div>
-    <!-- Group header -->
+  <div
+    class="tree-node group relative flex items-center h-9 cursor-pointer select-none transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/70"
+    :class="{
+      'bg-primary-50/70 dark:bg-primary-500/15 ring-1 ring-inset ring-primary-400/70':
+        dropIndicator === 'inside',
+    }"
+    :style="{ paddingLeft: indent + 'px', paddingRight: '2px' }"
+    :title="group.name"
+    @click="$emit('toggle-collapse', group.id)"
+  >
+    <!-- Twisty -->
+    <Icon
+      :name="group.collapsed ? 'mdi:chevron-right' : 'mdi:chevron-down'"
+      class="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400"
+    />
+    <!-- Folder icon -->
+    <Icon
+      :name="group.collapsed ? 'mdi:folder-outline' : 'mdi:folder-open-outline'"
+      class="w-4 h-4 flex-shrink-0 mr-1.5 text-primary-500 dark:text-primary-400"
+    />
+    <!-- Label -->
+    <span class="flex-1 min-w-0 truncate text-[13px] font-medium leading-none">
+      {{ group.name }}
+    </span>
+
+    <!-- Three-dots menu (reveals on hover / focus) -->
     <div
-      class="relative flex items-center gap-2 px-4 py-2.5 cursor-pointer border-b border-gray-200 dark:border-gray-800 bg-gray-100/60 dark:bg-gray-850/60 hover:bg-gray-200/60 dark:hover:bg-gray-800/60 transition-colors"
-      :class="{
-        'border-t-2 border-t-primary-500': dropIndicator === 'before',
-        'border-b-2 border-b-primary-500': dropIndicator === 'after',
-        'ring-2 ring-inset ring-primary-400 bg-primary-50/50 dark:bg-primary-900/20':
-          dropIndicator === 'inside',
-      }"
-      @click="$emit('toggle-collapse', group.id)"
+      ref="menuRef"
+      class="relative flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+      :class="{ 'opacity-100': menuOpen }"
+      tabindex="-1"
+      @focusout="onFocusOut"
     >
-      <Icon
-        :name="group.collapsed ? 'mdi:chevron-right' : 'mdi:chevron-down'"
-        class="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-150"
-      />
-      <Icon
-        name="mdi:folder-outline"
-        class="w-4 h-4 flex-shrink-0 text-primary-500 dark:text-primary-400"
-      />
-      <div class="flex-1 min-w-0">
-        <span class="text-sm font-medium text-gray-800 dark:text-gray-300 truncate block">
-          {{ group.name }}
-        </span>
-      </div>
-      <span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
-        {{ noteCount }}
-      </span>
-      <!-- Three-dots menu -->
-      <div ref="menuRef" class="relative flex-shrink-0" tabindex="-1" @focusout="onFocusOut">
-        <UiButton
-          variant="ghost"
-          color="gray"
-          icon-only
-          class="-m-1"
-          title="Group actions"
-          @click.stop="toggleMenu"
-        >
-          <Icon name="mdi:dots-vertical" class="w-4 h-4" />
-        </UiButton>
+      <UiButton
+        variant="ghost"
+        color="gray"
+        icon-only
+        class="!p-0.5"
+        title="Group actions"
+        @click.stop="toggleMenu"
+      >
+        <Icon name="mdi:dots-horizontal" class="w-4 h-4" />
+      </UiButton>
         <Transition
           enter-active-class="transition-all duration-150 ease-out"
           enter-from-class="opacity-0 scale-95"
@@ -52,6 +55,14 @@
             class="absolute right-0 z-50 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1"
             :class="dropUp ? 'bottom-full mb-1' : 'top-full mt-1'"
           >
+            <UiButton
+              v-if="canAddSubgroup"
+              variant="menu-item"
+              @click.stop="handleAction('add-subgroup')"
+            >
+              <Icon name="mdi:folder-plus-outline" class="w-4 h-4" />
+              Add Subgroup
+            </UiButton>
             <UiButton variant="menu-item" @click.stop="handleAction('edit')">
               <Icon name="mdi:pencil-outline" class="w-4 h-4" />
               Edit Group
@@ -64,7 +75,6 @@
           </div>
         </Transition>
       </div>
-    </div>
   </div>
 </template>
 
@@ -73,9 +83,14 @@ const props = defineProps({
   group: { type: Object, required: true },
   noteCount: { type: Number, default: 0 },
   dropIndicator: { type: String, default: null }, // 'before' | 'after' | 'inside' | null
+  level: { type: Number, default: 1 }, // 1-based nesting level
+  maxDepth: { type: Number, default: 3 },
+  indent: { type: Number, default: 8 }, // left padding (px) for nesting depth
 })
 
-const emit = defineEmits(['toggle-collapse', 'edit', 'delete'])
+const emit = defineEmits(['toggle-collapse', 'edit', 'delete', 'add-subgroup'])
+
+const canAddSubgroup = computed(() => props.level < props.maxDepth)
 
 const menuOpen = ref(false)
 const menuRef = ref(null)
@@ -98,6 +113,7 @@ const handleAction = (action) => {
   menuOpen.value = false
   if (action === 'edit') emit('edit', props.group.id)
   else if (action === 'delete') emit('delete', props.group.id)
+  else if (action === 'add-subgroup') emit('add-subgroup', props.group.id)
 }
 
 const onFocusOut = (e) => {

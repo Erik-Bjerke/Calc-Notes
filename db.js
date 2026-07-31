@@ -120,4 +120,22 @@ db.version(4).stores({
   shareTokens: 'hash',
 })
 
+// ── Version 5 — nested groups (file tree) via parentId ─────────────────
+// Groups gain a `parentId` pointing at their containing group (null = root).
+// This turns the previously-flat group list into a tree. The sidebar caps
+// nesting at 3 levels of groups; notes remain leaves inside any group.
+db.version(5)
+  .stores({
+    groups: 'id, sortOrder, parentId',
+  })
+  .upgrade(async (tx) => {
+    // Existing groups become top-level (parentId = null).
+    const allGroups = await tx.table('groups').toArray()
+    for (const group of allGroups) {
+      if (group.parentId === undefined) {
+        await tx.table('groups').update(group.id, { parentId: null })
+      }
+    }
+  })
+
 export default db

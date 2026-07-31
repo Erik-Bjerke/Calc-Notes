@@ -375,32 +375,27 @@ const noteActions = useNoteActions({
   evaluateLines, fileActions, toast,
 })
 
-const handleReorderAll = (orders) => {
-  const noteOrders = orders.filter((o) => o.kind === 'note')
-  const groupOrders = orders.filter((o) => o.kind === 'group')
+// Unified file-tree move/reorder. Reparents the dragged item (unless keepParent,
+// used by flat archive/bin/search reordering) then rewrites sortOrder across the
+// destination's siblings (notes and sub-groups share one ordering space).
+const handleTreeMove = ({ id, kind, newParentId, orderedIds, keepParent }) => {
   const now = new Date().toISOString()
-  for (const { id, sortOrder } of noteOrders) {
-    const note = notes.value.find((n) => n.id === id)
-    if (note) { note.sortOrder = sortOrder; note.updatedAt = now }
+  if (!keepParent) {
+    if (kind === 'note') {
+      const note = notes.value.find((n) => n.id === id)
+      if (note) { note.groupId = newParentId ?? null; note.updatedAt = now }
+    } else if (kind === 'group') {
+      const group = groups.value.find((g) => g.id === id)
+      if (group) { group.parentId = newParentId ?? null; group.updatedAt = now }
+    }
   }
-  notes.value.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-  saveNotes()
-  for (const { id, sortOrder } of groupOrders) {
-    const group = groups.value.find((g) => g.id === id)
-    if (group) { group.sortOrder = sortOrder; group.updatedAt = now }
-  }
-  groups.value.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-  saveGroups(); syncNow()
-}
-
-const handleReorderWithinGroup = ({ groupId: _groupId, orderedNoteIds }) => {
-  const now = new Date().toISOString()
-  orderedNoteIds.forEach((id, index) => {
-    const note = notes.value.find((n) => n.id === id)
+  orderedIds.forEach((sid, index) => {
+    const group = groups.value.find((g) => g.id === sid)
+    if (group) { group.sortOrder = index; group.updatedAt = now; return }
+    const note = notes.value.find((n) => n.id === sid)
     if (note) { note.sortOrder = index; note.updatedAt = now }
   })
-  notes.value.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-  saveNotes(); syncNow()
+  saveNotes(); saveGroups(); syncNow()
 }
 
 const { isMac: _isMac, modLabel, handlers: shortcutHandlers } = useKeyboardShortcuts({
@@ -764,9 +759,8 @@ const sidebarEvents = {
   'bulk-group': groupManagement.handleBulkGroup, 'add-to-group': groupManagement.handleAddToGroup,
   'toggle-group-collapse': groupManagement.handleToggleGroupCollapse,
   'edit-group': groupManagement.handleEditGroup, 'delete-group': groupManagement.handleDeleteGroup,
-  'move-note-to-group': groupManagement.handleMoveNoteToGroup,
-  'reorder-groups': groupManagement.handleReorderGroups,
-  'reorder-all': handleReorderAll, 'reorder-within-group': handleReorderWithinGroup,
+  'add-subgroup': groupManagement.handleAddSubgroup,
+  'tree-move': handleTreeMove,
 }
 </script>
 
