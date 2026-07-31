@@ -88,7 +88,7 @@ import {
   highlightActiveLine as cmHighlightActiveLine,
   highlightActiveLineGutter as cmHighlightActiveLineGutter,
 } from '@codemirror/view'
-import { Compartment, EditorSelection } from '@codemirror/state'
+import { Compartment, EditorSelection, EditorState, Prec } from '@codemirror/state'
 import { foldGutter as cmFoldGutter, indentUnit } from '@codemirror/language'
 import { closeBrackets as cmCloseBrackets } from '@codemirror/autocomplete'
 import { undo as cmUndo, redo as cmRedo, undoDepth, redoDepth } from '@codemirror/commands'
@@ -167,6 +167,7 @@ const activeLineGutterCompartment = new Compartment()
 const closeBracketsCompartment = new Compartment()
 const tabSizeCompartment = new Compartment()
 const wordWrapCompartment = new Compartment()
+const editableCompartment = new Compartment()
 
 // --- Font family map ---
 const FONT_FAMILY_MAP = {
@@ -296,6 +297,12 @@ const buildTabSize = () => indentUnit.of(' '.repeat(props.localePreferences?.edi
 const buildWordWrap = () => (props.localePreferences?.editorWordWrap ? EditorView.lineWrapping : [])
 const buildScrollPastEnd = () =>
   props.editable && props.localePreferences?.editorScrollPastEnd !== false ? scrollPastEnd() : []
+// Read-only gate: blocks both user typing (editable) and programmatic/command
+// edits (readOnly). Reconfigured live when `editable` changes (note switch).
+// Prec.highest ensures this wins over any editable/readOnly facet the
+// underlying nuxt-codemirror set at creation time.
+const buildEditable = () =>
+  Prec.highest([EditorView.editable.of(props.editable), EditorState.readOnly.of(!props.editable)])
 
 // --- Extensions array ---
 const cmExtensions = computed(() => [
@@ -310,6 +317,7 @@ const cmExtensions = computed(() => [
   tabSizeCompartment.of(buildTabSize()),
   wordWrapCompartment.of(buildWordWrap()),
   scrollPastEndCompartment.of(buildScrollPastEnd()),
+  editableCompartment.of(buildEditable()),
   inlineResultField,
   mdPreviewField,
   buildKeymap(),
@@ -418,6 +426,18 @@ watch(() => props.localePreferences, () => {
 watch(() => props.localePreferences?.showResultsInCodeBlocks, () => {
   updateLines(localContent.value)
   updateInlineDecorations()
+})
+
+// Reconfigure read-only state live when switching between editable and
+// archived/binned notes (the editor instance is reused across notes).
+watch(() => props.editable, () => {
+  if (!editorView) return
+  editorView.dispatch({
+    effects: [
+      editableCompartment.reconfigure(buildEditable()),
+      scrollPastEndCompartment.reconfigure(buildScrollPastEnd()),
+    ],
+  })
 })
 
 watch(() => colorMode.value, () => {
