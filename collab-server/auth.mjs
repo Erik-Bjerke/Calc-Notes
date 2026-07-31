@@ -45,14 +45,29 @@ export async function createAuth() {
   }
 
   const authenticate = (req) => {
-    if (!requireAuth) return true
-    if (!secret) return false
+    if (!requireAuth) {
+      console.warn('[collab] auth: disabled (COLLAB_REQUIRE_AUTH=false), accepting')
+      return true
+    }
+    if (!secret) {
+      console.warn('[collab] auth: no JWT_SECRET configured, rejecting')
+      return false
+    }
     const token = tokenFromRequest(req)
-    if (!token) return false
+    if (!token) {
+      console.warn('[collab] auth: no ?token= in request, rejecting')
+      return false
+    }
     try {
       const payload = verifyJwt(token, secret)
-      return payload.purpose === 'collab'
-    } catch {
+      if (payload.purpose !== 'collab') {
+        console.warn('[collab] auth: token purpose is not "collab", rejecting')
+        return false
+      }
+      console.warn('[collab] auth: token accepted for document', payload.documentId)
+      return true
+    } catch (err) {
+      console.warn('[collab] auth: token verification failed:', err?.message)
       return false
     }
   }

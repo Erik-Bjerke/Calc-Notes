@@ -57,7 +57,10 @@ export function createCollabServer(options = {}) {
     evictIdleAfterMs = 0,
   } = options
 
+  const log = (...args) => console.warn('[collab]', ...args)
+
   const httpServer = http.createServer((req, res) => {
+    log('HTTP', req.method, req.url)
     // Respond OK to any plain HTTP GET so health checks pass regardless of the
     // path the reverse proxy uses (e.g. same-domain path routing at /collab).
     // Real collaboration traffic arrives as WebSocket upgrades, handled below.
@@ -75,18 +78,22 @@ export function createCollabServer(options = {}) {
   const wss = new WebSocketServer({ noServer: true })
 
   httpServer.on('upgrade', async (req, socket, head) => {
+    log('WS upgrade attempt:', req.url)
     try {
       const ok = await authenticate(req)
       if (!ok) {
+        log('WS upgrade REJECTED (auth failed):', req.url)
         socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n')
         socket.destroy()
         return
       }
-    } catch {
+    } catch (err) {
+      log('WS upgrade REJECTED (auth threw):', err?.message)
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n')
       socket.destroy()
       return
     }
+    log('WS upgrade ACCEPTED:', req.url)
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit('connection', ws, req)
     })
@@ -100,6 +107,10 @@ export function createCollabServer(options = {}) {
     // it doesn't need, keeping per-connection work minimal.
     enableRemoteHeadsGossiping: false,
   })
+
+  repo.networkSubsystem.on('peer', ({ peerId }) => log('peer connected:', peerId))
+  repo.networkSubsystem.on('peer-disconnected', ({ peerId }) => log('peer disconnected:', peerId))
+  repo.on('document', ({ handle }) => log('document opened:', handle.url))
 
   // ── Idle document eviction (bounded memory) ────────────────────────────
   // Track last activity per document. Editors emit presence heartbeats and

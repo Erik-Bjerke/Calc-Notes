@@ -18,6 +18,14 @@ const PORT = parseInt(process.env.COLLAB_PORT || '3030', 10)
 const HOST = process.env.COLLAB_HOST || '0.0.0.0'
 
 async function main() {
+  console.warn('[collab] starting with config:', {
+    port: PORT,
+    host: HOST,
+    storage: process.env.COLLAB_STORAGE || 'in-memory',
+    requireAuth: process.env.COLLAB_REQUIRE_AUTH !== 'false',
+    jwtSecretSet: !!process.env.JWT_SECRET,
+    postgresHost: process.env.POSTGRES_HOST || '(unset)',
+  })
   const storage = await createStorage()
   const { sharePolicy, authenticate } = await createAuth()
 
