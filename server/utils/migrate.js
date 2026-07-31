@@ -313,6 +313,22 @@ export async function migrate() {
     ON groups(user_id, client_id) WHERE client_id IS NOT NULL
   `)
 
+  // Add parent_id to groups for nested folders (stores the parent's client_id)
+  await query(`
+    DO $do$ BEGIN
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS parent_id TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $do$
+  `)
+
+  // Add deleted_at to groups for soft-delete (bin) support
+  await query(`
+    DO $do$ BEGIN
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $do$
+  `)
+
   // Lightweight tombstone table for multi-device group deletion sync
   await query(`
     CREATE TABLE IF NOT EXISTS deleted_groups (

@@ -56,16 +56,18 @@ export default defineEventHandler(async (event) => {
 
     const result = await query(
       `
-      INSERT INTO groups (user_id, client_id, name, internal_name, sort_order, collapsed, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO groups (user_id, client_id, name, internal_name, sort_order, collapsed, parent_id, deleted_at, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL
       DO UPDATE SET
         name = CASE WHEN EXCLUDED.updated_at >= groups.updated_at THEN EXCLUDED.name ELSE groups.name END,
         internal_name = CASE WHEN EXCLUDED.updated_at >= groups.updated_at THEN EXCLUDED.internal_name ELSE groups.internal_name END,
         sort_order = CASE WHEN EXCLUDED.updated_at >= groups.updated_at THEN EXCLUDED.sort_order ELSE groups.sort_order END,
         collapsed = CASE WHEN EXCLUDED.updated_at >= groups.updated_at THEN EXCLUDED.collapsed ELSE groups.collapsed END,
+        parent_id = CASE WHEN EXCLUDED.updated_at >= groups.updated_at THEN EXCLUDED.parent_id ELSE groups.parent_id END,
+        deleted_at = CASE WHEN EXCLUDED.updated_at >= groups.updated_at THEN EXCLUDED.deleted_at ELSE groups.deleted_at END,
         updated_at = GREATEST(EXCLUDED.updated_at, groups.updated_at)
-      RETURNING id, client_id, name, internal_name, sort_order, collapsed, created_at, updated_at
+      RETURNING id, client_id, name, internal_name, sort_order, collapsed, parent_id, deleted_at, created_at, updated_at
     `,
       [
         auth.userId,
@@ -74,6 +76,8 @@ export default defineEventHandler(async (event) => {
         group.internalName || '',
         group.sortOrder ?? 0,
         group.collapsed ?? false,
+        group.parentId ?? null,
+        group.deletedAt ?? null,
         group.createdAt || new Date().toISOString(),
         group.updatedAt || new Date().toISOString(),
       ],
@@ -88,6 +92,8 @@ export default defineEventHandler(async (event) => {
         internalName: row.internal_name,
         sortOrder: row.sort_order,
         collapsed: row.collapsed,
+        parentId: row.parent_id,
+        deletedAt: row.deleted_at,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       })
@@ -108,7 +114,7 @@ export default defineEventHandler(async (event) => {
   // 4. Pull all groups from server
   const pullResult = await query(
     `
-    SELECT id, client_id, name, internal_name, sort_order, collapsed, created_at, updated_at
+    SELECT id, client_id, name, internal_name, sort_order, collapsed, parent_id, deleted_at, created_at, updated_at
     FROM groups WHERE user_id = $1
     ORDER BY sort_order ASC
   `,
@@ -122,6 +128,8 @@ export default defineEventHandler(async (event) => {
     internalName: row.internal_name,
     sortOrder: row.sort_order,
     collapsed: row.collapsed,
+    parentId: row.parent_id,
+    deletedAt: row.deleted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }))
