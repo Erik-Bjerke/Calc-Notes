@@ -69,9 +69,8 @@ export default defineEventHandler(async (event) => {
     email = sharerEmail || null
   }
 
-  let expiresAt = null
   const days = Math.min(Math.max(parseInt(expiresInDays) || 30, 1), 30)
-  expiresAt = new Date(Date.now() + days * 86400000).toISOString()
+  const expiresAt = new Date(Date.now() + days * 86400000).toISOString()
 
   // Tags may be an encrypted string or an array
   const tagsValue = typeof tags === 'string' ? tags : JSON.stringify(tags || [])
