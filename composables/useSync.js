@@ -217,6 +217,7 @@ export const useSync = (
             sortOrder: g.sortOrder ?? 0,
             parentId: g.parentId ?? null,
             collapsed: g.collapsed ?? false,
+            deletedAt: g.deletedAt ?? null,
             createdAt: g.createdAt,
             updatedAt: g.updatedAt,
           }))
@@ -257,6 +258,8 @@ export const useSync = (
                 // so older servers that don't know about nesting don't flatten the tree.
                 if (remote.parentId !== undefined && existing.parentId !== remote.parentId)
                   existing.parentId = remote.parentId
+                if (remote.deletedAt !== undefined && existing.deletedAt !== remote.deletedAt)
+                  existing.deletedAt = remote.deletedAt
                 existing.updatedAt = remote.updatedAt
               }
             } else {
@@ -267,6 +270,7 @@ export const useSync = (
                 sortOrder: remote.sortOrder ?? 0,
                 parentId: remote.parentId ?? null,
                 collapsed: remote.collapsed ?? false,
+                deletedAt: remote.deletedAt ?? null,
                 createdAt: remote.createdAt,
                 updatedAt: remote.updatedAt,
               })

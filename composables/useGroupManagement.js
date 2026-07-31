@@ -9,6 +9,8 @@ export function useGroupManagement({
   deleteGroupFromDb,
   toggleGroupCollapsed,
   reorderGroups,
+  moveGroup,
+  softDeleteGroups,
   moveNotesToGroup,
   removeNotesFromGroup,
   deleteNote,
@@ -27,6 +29,8 @@ export function useGroupManagement({
   const showAddToGroupModal = ref(false)
   const addToGroupNoteId = ref(null)
   const bulkGroupNoteIds = ref(null)
+  const bulkGroupGroupIds = ref(null)
+  const bulkGroupParentId = ref(null)
 
   // Parent group for a group about to be created (null = top level).
   const pendingParentGroupId = ref(null)
@@ -73,17 +77,35 @@ export function useGroupManagement({
     showAddToGroupModal.value = true
   }
 
-  const handleBulkGroup = (noteIds) => {
+  const handleBulkGroup = (payload) => {
+    const noteIds = Array.isArray(payload) ? payload : payload?.noteIds || []
+    const groupIds = Array.isArray(payload) ? [] : payload?.groupIds || []
     bulkGroupNoteIds.value = noteIds
+    bulkGroupGroupIds.value = groupIds
+    // Where a newly-created group should live so the selection is wrapped in place.
+    bulkGroupParentId.value = Array.isArray(payload) ? null : (payload?.parentId ?? null)
     addToGroupNoteId.value = null
     showAddToGroupModal.value = true
   }
 
-  const handleAddToGroupSelect = (groupId) => {
+  // Move the pending bulk selection (notes + group folders) into `targetId`.
+  const applyBulkMove = (targetId) => {
+    if (bulkGroupGroupIds.value) {
+      for (const gid of bulkGroupGroupIds.value) moveGroup(gid, targetId)
+      bulkGroupGroupIds.value = null
+    }
     if (bulkGroupNoteIds.value) {
-      moveNotesToGroup(bulkGroupNoteIds.value, groupId)
+      moveNotesToGroup(bulkGroupNoteIds.value, targetId)
       bulkGroupNoteIds.value.forEach((id) => syncNow(id))
       bulkGroupNoteIds.value = null
+    }
+    bulkGroupParentId.value = null
+    syncNow()
+  }
+
+  const handleAddToGroupSelect = (groupId) => {
+    if (bulkGroupNoteIds.value || bulkGroupGroupIds.value) {
+      applyBulkMove(groupId)
     } else if (addToGroupNoteId.value) {
       moveNotesToGroup([addToGroupNoteId.value], groupId)
       syncNow(addToGroupNoteId.value)
@@ -97,7 +119,8 @@ export function useGroupManagement({
     editingGroupId.value = null
     editingGroupName.value = ''
     editingGroupInternalName.value = ''
-    pendingParentGroupId.value = null
+    // Create the new group in place so the bulk selection is wrapped, not relocated.
+    pendingParentGroupId.value = bulkGroupParentId.value ?? null
     showGroupModal.value = true
   }
 
@@ -117,10 +140,8 @@ export function useGroupManagement({
       const group = addGroup(name, pendingParentGroupId.value)
       updateGroup(group.id, { internalName })
       pendingParentGroupId.value = null
-      if (bulkGroupNoteIds.value) {
-        moveNotesToGroup(bulkGroupNoteIds.value, group.id)
-        bulkGroupNoteIds.value.forEach((nid) => syncNow(nid))
-        bulkGroupNoteIds.value = null
+      if (bulkGroupNoteIds.value || bulkGroupGroupIds.value) {
+        applyBulkMove(group.id)
       } else if (addToGroupNoteId.value) {
         moveNotesToGroup([addToGroupNoteId.value], group.id)
         syncNow(addToGroupNoteId.value)
@@ -173,7 +194,9 @@ export function useGroupManagement({
         if (useSoftDelete) softDeleteNote(id)
         else deleteNote(id)
       }
-      for (const gid of subtreeGroupIds) deleteGroupFromDb(gid)
+      // With the bin on, keep the folders (recoverable); otherwise remove them.
+      if (useSoftDelete) softDeleteGroups(subtreeGroupIds)
+      else for (const gid of subtreeGroupIds) deleteGroupFromDb(gid)
     } else {
       // Fallback: detach the subtree's notes and remove just this group.
       removeNotesFromGroup(groupId)
@@ -183,6 +206,24 @@ export function useGroupManagement({
     showDeleteGroupModal.value = false
     pendingDeleteGroupId.value = null
     syncNow()
+  }
+
+  // Delete several groups at once (each folder plus its entire subtree of notes
+  // and sub-groups). `soft` routes contained notes to the bin instead of hard delete.
+  const bulkDeleteGroups = (groupIds, { soft = false } = {}) => {
+    const all = new Set()
+    for (const gid of groupIds) {
+      all.add(gid)
+      for (const d of collectDescendantGroupIds(gid)) all.add(d)
+    }
+    const noteIds = notes.value.filter((n) => all.has(n.groupId)).map((n) => n.id)
+    for (const id of noteIds) {
+      if (soft) softDeleteNote(id)
+      else deleteNote(id)
+    }
+    // Soft delete keeps the folders in the bin (restorable); hard delete removes them.
+    if (soft) softDeleteGroups([...all])
+    else for (const gid of all) deleteGroupFromDb(gid)
   }
 
   const handleToggleGroupCollapse = (groupId) => {
@@ -211,6 +252,7 @@ export function useGroupManagement({
     showAddToGroupModal,
     addToGroupNoteId,
     bulkGroupNoteIds,
+    bulkGroupGroupIds,
     pendingParentGroupId,
     handleAddToGroup,
     handleBulkGroup,
@@ -221,6 +263,7 @@ export function useGroupManagement({
     handleEditGroup,
     handleDeleteGroup,
     handleDeleteGroupConfirm,
+    bulkDeleteGroups,
     handleToggleGroupCollapse,
     handleMoveNoteToGroup,
     handleReorderGroups,

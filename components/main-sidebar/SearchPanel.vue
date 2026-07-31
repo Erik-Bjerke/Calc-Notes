@@ -31,6 +31,22 @@
           </button>
         </div>
         <UiButton
+          v-if="allTags.length"
+          variant="ghost"
+          icon-only
+          size="sm"
+          class="flex-shrink-0"
+          :class="
+            showTags || selectedTags.length
+              ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+          "
+          title="Filter by tag"
+          @click="showTags = !showTags"
+        >
+          <Icon name="mdi:tag-multiple-outline" class="w-4 h-4 block" />
+        </UiButton>
+        <UiButton
           variant="ghost"
           icon-only
           size="sm"
@@ -125,6 +141,34 @@
           </div>
         </div>
       </Transition>
+
+      <!-- Tag filter -->
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        enter-from-class="opacity-0 -translate-y-1 max-h-0"
+        enter-to-class="opacity-100 translate-y-0 max-h-40"
+        leave-active-class="transition-all duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0 max-h-40"
+        leave-to-class="opacity-0 -translate-y-1 max-h-0"
+      >
+        <div v-if="showTags && allTags.length" class="flex flex-wrap gap-1.5">
+          <UiButton
+            v-for="tag in allTags"
+            :key="tag"
+            variant="ghost"
+            shape="pill"
+            size="xs"
+            :class="
+              selectedTags.includes(tag)
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+            "
+            @click="toggleTag(tag)"
+          >
+            {{ tag }}
+          </UiButton>
+        </div>
+      </Transition>
     </div>
 
     <!-- Results -->
@@ -189,7 +233,23 @@ defineEmits(['select-note'])
 
 const query = ref('')
 const showFilters = ref(false)
+const showTags = ref(false)
+const selectedTags = ref([])
 const inputRef = ref(null)
+
+const allTags = computed(() => {
+  const set = new Set()
+  for (const n of props.notes) {
+    if (!n.deletedAt && n.tags) n.tags.forEach((t) => set.add(t))
+  }
+  return [...set].sort()
+})
+
+const toggleTag = (tag) => {
+  const idx = selectedTags.value.indexOf(tag)
+  if (idx === -1) selectedTags.value.push(tag)
+  else selectedTags.value.splice(idx, 1)
+}
 
 const filters = reactive({
   searchContent: true,
@@ -224,12 +284,18 @@ const clearFilters = () => {
 const trimmed = computed(() => query.value.trim())
 const q = computed(() => trimmed.value.toLowerCase())
 
-// Results show when there's a query or any active filter.
-const isSearching = computed(() => trimmed.value !== '' || hasActiveFilters.value)
+// Results show when there's a query, any active filter, or a selected tag.
+const isSearching = computed(
+  () => trimmed.value !== '' || hasActiveFilters.value || selectedTags.value.length > 0,
+)
 
 const results = computed(() => {
   if (!isSearching.value) return []
   let list = props.notes.filter((n) => !n.deletedAt)
+
+  if (selectedTags.value.length) {
+    list = list.filter((n) => selectedTags.value.every((t) => (n.tags || []).includes(t)))
+  }
 
   if (q.value) {
     list = list.filter((n) => {

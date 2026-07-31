@@ -72,6 +72,7 @@ export const useGroups = () => {
       sortOrder: 0,
       parentId: null,
       collapsed: false,
+      deletedAt: null,
       createdAt: now,
       updatedAt: now,
     }
@@ -174,6 +175,64 @@ export const useGroups = () => {
     saveGroups()
   }
 
+  // ── Soft delete (bin) ───────────────────────────────────
+  // Mark the given group ids as deleted (callers pass the full subtree).
+  const softDeleteGroups = (ids) => {
+    const now = new Date().toISOString()
+    const set = new Set(ids)
+    for (const g of groups.value) {
+      if (set.has(g.id)) {
+        g.deletedAt = now
+        g.updatedAt = now
+      }
+    }
+    saveGroups()
+  }
+
+  // Restore the given group ids from the bin.
+  const restoreGroups = (ids) => {
+    const now = new Date().toISOString()
+    const set = new Set(ids)
+    for (const g of groups.value) {
+      if (set.has(g.id)) {
+        g.deletedAt = null
+        g.updatedAt = now
+      }
+    }
+    saveGroups()
+  }
+
+  // Un-delete a group's ancestor chain (used when restoring a note whose
+  // containing folder was soft-deleted, so it reappears in place).
+  const restoreGroupAncestors = (groupId) => {
+    let gid = groupId
+    const seen = new Set()
+    let changed = false
+    const now = new Date().toISOString()
+    while (gid && !seen.has(gid)) {
+      seen.add(gid)
+      const g = groupById(gid)
+      if (!g) break
+      if (g.deletedAt) {
+        g.deletedAt = null
+        g.updatedAt = now
+        changed = true
+      }
+      gid = g.parentId
+    }
+    if (changed) saveGroups()
+  }
+
+  // Permanently remove a set of groups (and their subtrees) from the bin.
+  const permanentlyDeleteGroups = (ids) => {
+    const all = new Set()
+    for (const id of ids) {
+      all.add(id)
+      for (const d of descendantGroupIds(id)) all.add(d)
+    }
+    for (const id of all) deleteGroup(id)
+  }
+
   const clearDeletedGroupIds = async () => {
     deletedGroupIds.value = []
     if (import.meta.client) {
@@ -220,6 +279,10 @@ export const useGroups = () => {
     groupDepth,
     subtreeGroupHeight,
     descendantGroupIds,
+    softDeleteGroups,
+    restoreGroups,
+    restoreGroupAncestors,
+    permanentlyDeleteGroups,
     loadGroups,
     saveGroups,
     clearDeletedGroupIds,

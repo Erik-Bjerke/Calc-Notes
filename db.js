@@ -138,4 +138,20 @@ db.version(5)
     }
   })
 
+// ── Version 6 — soft-delete (bin) for groups ───────────────────────────
+// Groups gain a `deletedAt` timestamp so deleting a folder moves it (and its
+// contents) to the bin, preserving the tree structure for restore.
+db.version(6)
+  .stores({
+    groups: 'id, sortOrder, parentId, deletedAt',
+  })
+  .upgrade(async (tx) => {
+    const allGroups = await tx.table('groups').toArray()
+    for (const group of allGroups) {
+      if (group.deletedAt === undefined) {
+        await tx.table('groups').update(group.id, { deletedAt: null })
+      }
+    }
+  })
+
 export default db

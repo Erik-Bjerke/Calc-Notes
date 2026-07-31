@@ -57,7 +57,11 @@
           :max-depth="maxGroupDepth"
           :indent="indentPx(item.depth)"
           :drop-indicator="dropInsideId === item.id ? 'inside' : null"
+          :select-mode="selectMode"
+          :selected="selectedGroupIds.has(item.id)"
+          :bin-mode="showBin"
           @toggle-collapse="(id) => $emit('toggle-group-collapse', id)"
+          @toggle-select="(id) => $emit('toggle-group-selection', id)"
           @edit="(id) => $emit('edit-group', id)"
           @delete="(id) => $emit('delete-group', id)"
           @add-subgroup="(id) => $emit('add-subgroup', id)"
@@ -155,6 +159,7 @@ const props = defineProps({
   currentNoteId: { type: String, default: null },
   selectMode: { type: Boolean, required: true },
   selectedIds: { type: Set, required: true },
+  selectedGroupIds: { type: Set, default: () => new Set() },
   sharedNoteIds: { type: Array, required: true },
   sharedNotesMap: { type: Map, required: true },
   analyticsNotesMap: { type: Map, required: true },
@@ -178,6 +183,7 @@ defineEmits([
   'drag-end',
   'touch-start',
   'toggle-group-collapse',
+  'toggle-group-selection',
   'edit-group',
   'delete-group',
   'add-subgroup',

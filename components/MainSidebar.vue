@@ -1,11 +1,17 @@
 <template>
   <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
-    <!-- Selection Toolbar / Header — crossfade in a fixed container -->
-    <div class="relative border-b border-gray-200 dark:border-gray-800 flex-shrink-0 overflow-hidden">
+    <!-- Selection Toolbar / Header — crossfade in a fixed container.
+         In select mode the area expands (animated) to fit the taller toolbar. -->
+    <div
+      class="relative border-b border-gray-200 dark:border-gray-800 flex-shrink-0 overflow-hidden transition-[padding] duration-200 ease-out"
+      :class="{ 'pb-14': selectMode }"
+    >
       <!-- Select toolbar -->
       <MainSidebarSelectionToolbar
         :select-mode="selectMode"
         :selected-ids="selectedIds"
+        :selected-count="selectedCount"
+        :can-group="canGroupSelection"
         :all-selected="allSelected"
         :show-bin="showBin"
         :show-archive="showArchive"
@@ -40,6 +46,7 @@
       :current-note-id="currentNoteId"
       :select-mode="selectMode"
       :selected-ids="selectedIds"
+      :selected-group-ids="selectedGroupIds"
       :shared-note-ids="sharedNoteIds"
       :shared-notes-map="sharedNotesMap"
       :analytics-notes-map="analyticsNotesMap"
@@ -76,6 +83,7 @@
       @archive-note="(id) => $emit('archive-note', id)"
       @unarchive-note="(id) => $emit('unarchive-note', id)"
       @toggle-note-selection="toggleNoteSelection"
+      @toggle-group-selection="toggleGroupSelection"
       @add-to-group="(id) => $emit('add-to-group', id)"
       @restore-note="(id) => $emit('restore-note', id)"
       @permanent-delete-note="(id) => $emit('permanent-delete-note', id)"
@@ -187,17 +195,30 @@ watch(() => props.currentNoteId, (newId) => {
 // by tag. When a tag filter is active the tree flattens to matching notes.
 
 const isFiltering = computed(() => selectedTags.value.length > 0)
-const canReorder = computed(() => !selectMode.value && !isFiltering.value)
+const canReorder = computed(
+  () => !selectMode.value && !isFiltering.value && !showArchive.value && !showBin.value,
+)
 
 // ── Multi-select ─────────────────────────────────────────
 
 const selectMode = ref(false)
-const selectedIds = ref(new Set())
+const selectedIds = ref(new Set()) // selected note ids
+const selectedGroupIds = ref(new Set()) // selected group ids
+
+const selectedCount = computed(() => selectedIds.value.size + selectedGroupIds.value.size)
+
+// Groups that are currently visible in the tree (all of them, or — in
+// archive/bin/filter views — only those containing matching notes).
+const selectableGroups = computed(() => {
+  const vis = visibleGroupIds.value
+  return vis === null ? viewGroups.value : viewGroups.value.filter((g) => vis.has(g.id))
+})
 
 const allSelected = computed(() => {
-  return (
-    filteredNotes.value.length > 0 && filteredNotes.value.every((n) => selectedIds.value.has(n.id))
-  )
+  const hasItems = filteredNotes.value.length > 0 || selectableGroups.value.length > 0
+  const notesAll = filteredNotes.value.every((n) => selectedIds.value.has(n.id))
+  const groupsAll = selectableGroups.value.every((g) => selectedGroupIds.value.has(g.id))
+  return hasItems && notesAll && groupsAll
 })
 
 const toggleSelectMode = () => {
@@ -205,6 +226,7 @@ const toggleSelectMode = () => {
   else {
     selectMode.value = true
     selectedIds.value = new Set()
+    selectedGroupIds.value = new Set()
     emit('selection-change', [])
   }
 }
@@ -212,6 +234,7 @@ const toggleSelectMode = () => {
 const exitSelectMode = () => {
   selectMode.value = false
   selectedIds.value = new Set()
+  selectedGroupIds.value = new Set()
   emit('selection-change', [])
 }
 
@@ -223,38 +246,142 @@ const toggleNoteSelection = (noteId) => {
   emit('selection-change', [...next])
 }
 
+// Selecting a group cascades to its whole subtree (sub-groups + notes);
+// deselecting removes them all.
+const toggleGroupSelection = (groupId) => {
+  const selecting = !selectedGroupIds.value.has(groupId)
+  const groupIds = [groupId, ...descendantIds(groupId)]
+  const noteIds = groupDescendantNoteIds(groupId)
+
+  const nextGroups = new Set(selectedGroupIds.value)
+  const nextNotes = new Set(selectedIds.value)
+  if (selecting) {
+    groupIds.forEach((id) => nextGroups.add(id))
+    noteIds.forEach((id) => nextNotes.add(id))
+  } else {
+    groupIds.forEach((id) => nextGroups.delete(id))
+    noteIds.forEach((id) => nextNotes.delete(id))
+  }
+  selectedGroupIds.value = nextGroups
+  selectedIds.value = nextNotes
+  emit('selection-change', [...nextNotes])
+}
+
+// Top-level selected items (their parent group is not itself selected). These
+// are what a bulk "Group" moves — their subtrees travel with them.
+const selectedGroupRoots = computed(() =>
+  [...selectedGroupIds.value].filter((id) => {
+    const g = groupsById.value.get(id)
+    return !g || !g.parentId || !selectedGroupIds.value.has(g.parentId)
+  }),
+)
+
+const selectedNoteRoots = computed(() =>
+  [...selectedIds.value].filter((id) => {
+    const note = props.notes.find((n) => n.id === id)
+    const gid = note?.groupId ?? null
+    return !gid || !selectedGroupIds.value.has(gid)
+  }),
+)
+
+// The common parent of the selection roots (null = mixed parents or root).
+const selectionCommonParent = computed(() => {
+  const parents = new Set()
+  for (const id of selectedGroupRoots.value) {
+    const g = groupsById.value.get(id)
+    parents.add(g?.parentId ?? null)
+  }
+  for (const id of selectedNoteRoots.value) {
+    const n = props.notes.find((x) => x.id === id)
+    parents.add(n?.groupId ?? null)
+  }
+  return parents.size === 1 ? [...parents][0] : null
+})
+
+// Grouping wraps the selection in a new group one level deeper (in place).
+// Only possible if the deepest group involved would stay within the limit:
+//   • a group root R: its subtree's deepest level (groupLevel + height - 1),
+//     pushed one deeper, must be <= MAX_DEPTH.
+//   • a standalone note: the group that would wrap it sits at its parent
+//     level + 1, which must be <= MAX_DEPTH.
+const canGroupSelection = computed(() => {
+  if (selectedCount.value === 0) return false
+  const groupsOk = selectedGroupRoots.value.every(
+    (id) => groupLevel(id) + subtreeHeight(id) <= maxGroupDepth,
+  )
+  const notesOk = selectedNoteRoots.value.every((id) => {
+    const note = props.notes.find((n) => n.id === id)
+    const parentLevel = note?.groupId ? groupLevel(note.groupId) : 0
+    return parentLevel + 1 <= maxGroupDepth
+  })
+  return groupsOk && notesOk
+})
+
 const toggleSelectAll = () => {
   if (allSelected.value) {
     selectedIds.value = new Set()
+    selectedGroupIds.value = new Set()
     emit('selection-change', [])
   } else {
     const ids = filteredNotes.value.map((n) => n.id)
     selectedIds.value = new Set(ids)
+    selectedGroupIds.value = new Set(selectableGroups.value.map((g) => g.id))
     emit('selection-change', ids)
   }
 }
 
+// Notes contained (recursively) in a group, within the current view.
+const groupDescendantNoteIds = (groupId) => {
+  const out = []
+  const walk = (gid) => {
+    for (const n of filteredNotes.value) if ((n.groupId ?? null) === gid) out.push(n.id)
+    for (const g of props.groups) if ((g.parentId ?? null) === gid) walk(g.id)
+  }
+  walk(groupId)
+  return out
+}
+
+// Selected notes plus every note inside a selected group — used by note-level
+// bulk actions (archive / group) so selecting a folder affects its contents.
+const effectiveNoteIds = () => {
+  const set = new Set(selectedIds.value)
+  for (const gid of selectedGroupIds.value) {
+    for (const nid of groupDescendantNoteIds(gid)) set.add(nid)
+  }
+  return [...set]
+}
+
 const bulkDelete = () => {
-  if (selectedIds.value.size === 0) return
-  emit('bulk-delete', [...selectedIds.value])
+  if (selectedCount.value === 0) return
+  emit('bulk-delete', {
+    noteIds: [...selectedIds.value],
+    groupIds: [...selectedGroupIds.value],
+  })
   exitSelectMode()
 }
 
 const bulkRestore = () => {
-  if (selectedIds.value.size === 0) return
-  emit('bulk-restore', [...selectedIds.value])
+  if (selectedCount.value === 0) return
+  emit('bulk-restore', {
+    noteIds: [...selectedIds.value],
+    groupIds: [...selectedGroupIds.value],
+  })
   exitSelectMode()
 }
 
 const bulkPermanentDelete = () => {
-  if (selectedIds.value.size === 0) return
-  emit('bulk-permanent-delete', [...selectedIds.value])
+  if (selectedCount.value === 0) return
+  emit('bulk-permanent-delete', {
+    noteIds: [...selectedIds.value],
+    groupIds: [...selectedGroupIds.value],
+  })
   exitSelectMode()
 }
 
 const bulkArchive = () => {
-  if (selectedIds.value.size === 0) return
-  emit('bulk-archive', [...selectedIds.value])
+  const ids = effectiveNoteIds()
+  if (ids.length === 0) return
+  emit('bulk-archive', ids)
   exitSelectMode()
 }
 
@@ -265,8 +392,12 @@ const bulkUnarchive = () => {
 }
 
 const bulkGroup = () => {
-  if (selectedIds.value.size === 0) return
-  emit('bulk-group', [...selectedIds.value])
+  if (!canGroupSelection.value) return
+  emit('bulk-group', {
+    noteIds: selectedNoteRoots.value,
+    groupIds: selectedGroupRoots.value,
+    parentId: selectionCommonParent.value,
+  })
   exitSelectMode()
 }
 
@@ -299,12 +430,30 @@ const filteredNotes = computed(() => {
 // In archive / bin / active-search views the tree flattens to a plain note
 // list (no groups, reorder only). Otherwise the full nested tree is shown.
 const maxGroupDepth = 3
-const flatMode = computed(() => showArchive.value || showBin.value || isFiltering.value)
+// The bin shows soft-deleted folders; every other view shows live folders.
+const viewGroups = computed(() =>
+  showBin.value
+    ? props.groups.filter((g) => g.deletedAt)
+    : props.groups.filter((g) => !g.deletedAt),
+)
+// Archive / tag-filter views hide folders with no matching notes. The bin keeps
+// its deleted folders even when empty so they remain restorable.
+const pruneEmpty = computed(() => showArchive.value || isFiltering.value)
 
-const { displayItems, childrenOf, groupsById, canPlaceNoteIn, canPlaceGroupIn } = useNoteTree({
+const {
+  displayItems,
+  childrenOf,
+  groupsById,
+  visibleGroupIds,
+  groupLevel,
+  subtreeHeight,
+  descendantIds,
+  canPlaceNoteIn,
+  canPlaceGroupIn,
+} = useNoteTree({
   filteredNotes,
-  groups: toRef(props, 'groups'),
-  flatMode,
+  groups: viewGroups,
+  pruneEmpty,
 })
 
 const groupCount = (groupId) => childrenOf(groupId).length
@@ -329,7 +478,7 @@ const {
   canPlaceGroupIn,
   listRef,
   canReorder,
-  flatMode,
+  flatMode: computed(() => false),
   onToggleCollapse: (id) => emit('toggle-group-collapse', id),
   onMove: (payload) => emit('tree-move', payload),
 })

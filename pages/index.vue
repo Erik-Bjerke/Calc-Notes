@@ -215,8 +215,8 @@
     <RestorePasswordModal :is-open="noteActions.showRestorePassword.value" :error="noteActions.restorePasswordError.value" @close="noteActions.handleRestorePasswordClose" @confirm="noteActions.handleRestorePasswordConfirm" />
     <RestoreConfirmModal :is-open="noteActions.showRestoreConfirm.value" :duplicate-count="noteActions.restoreDuplicateCount.value" @close="noteActions.handleRestoreConfirmClose" @skip="noteActions.handleRestoreConfirmSkip" @overwrite="noteActions.handleRestoreConfirmOverwrite" />
     <ConfirmDeleteModal :is-open="showDeleteConfirm" :bin-enabled="binEnabled" @close="showDeleteConfirm = false" @confirm="handleDeleteConfirm" />
-    <ConfirmBulkDeleteModal :is-open="showBulkDeleteConfirm" :count="pendingBulkDeleteIds.length" :bin-enabled="binEnabled" @close="showBulkDeleteConfirm = false" @confirm="handleBulkDeleteConfirm" />
-    <ConfirmPermanentDeleteModal :is-open="showPermanentDeleteConfirm" :count="pendingPermanentDeleteIds.length" @close="handlePermanentDeleteCancel" @confirm="handlePermanentDeleteConfirm" />
+    <ConfirmBulkDeleteModal :is-open="showBulkDeleteConfirm" :count="pendingBulkDeleteIds.length + pendingBulkDeleteGroupIds.length" :bin-enabled="binEnabled" @close="showBulkDeleteConfirm = false" @confirm="handleBulkDeleteConfirm" />
+    <ConfirmPermanentDeleteModal :is-open="showPermanentDeleteConfirm" :count="pendingPermanentDeleteIds.length + pendingPermanentDeleteGroupIds.length" @close="handlePermanentDeleteCancel" @confirm="handlePermanentDeleteConfirm" />
     <RestoreFromBinModal :is-open="noteActions.showRestoreFromBin.value" :note-title="noteActions.pendingRestoreFromBinTitle.value" @close="noteActions.handleRestoreFromBinClose" @confirm="handleRestoreFromBinConfirm" />
 
     <WelcomeWizard
@@ -265,7 +265,7 @@
     <AddToGroupModal
       :is-open="groupManagement.showAddToGroupModal.value" :groups="groups"
       :current-group-id="groupManagement.addToGroupNoteId.value ? notes.find((n) => n.id === groupManagement.addToGroupNoteId.value)?.groupId || null : null"
-      @close="groupManagement.showAddToGroupModal.value = false; groupManagement.bulkGroupNoteIds.value = null; groupManagement.addToGroupNoteId.value = null"
+      @close="groupManagement.showAddToGroupModal.value = false; groupManagement.bulkGroupNoteIds.value = null; groupManagement.bulkGroupGroupIds.value = null; groupManagement.addToGroupNoteId.value = null"
       @select="groupManagement.handleAddToGroupSelect" @create-new="groupManagement.handleAddToGroupCreateNew"
     />
 
@@ -301,7 +301,8 @@ const {
 } = useNotes()
 const {
   groups, deletedGroupIds, addGroup, updateGroup,
-  deleteGroup: deleteGroupFromDb, toggleGroupCollapsed, reorderGroups, saveGroups, clearDeletedGroupIds,
+  deleteGroup: deleteGroupFromDb, toggleGroupCollapsed, reorderGroups, moveGroup, saveGroups, clearDeletedGroupIds,
+  softDeleteGroups, restoreGroups, restoreGroupAncestors, permanentlyDeleteGroups,
 } = useGroups()
 const fileActions = useFileActions()
 const { evaluateLines } = useCalculator()
@@ -366,7 +367,7 @@ const binEnabled = computed(() => localePrefs.preferences.binEnabled !== false)
 // --- Composable: Group management ---
 const groupManagement = useGroupManagement({
   notes, groups, addGroup, updateGroup, deleteGroupFromDb, toggleGroupCollapsed,
-  reorderGroups, moveNotesToGroup, removeNotesFromGroup, deleteNote, softDeleteNote, binEnabled, syncNow,
+  reorderGroups, moveGroup, softDeleteGroups, moveNotesToGroup, removeNotesFromGroup, deleteNote, softDeleteNote, binEnabled, syncNow,
 })
 
 // Wrapper: create note + instant sync
@@ -692,6 +693,7 @@ const showDeleteConfirm = ref(false)
 const pendingDeleteId = ref(null)
 const showBulkDeleteConfirm = ref(false)
 const pendingBulkDeleteIds = ref([])
+const pendingBulkDeleteGroupIds = ref([])
 
 const confirmDelete = (id) => { pendingDeleteId.value = id; showDeleteConfirm.value = true }
 const handleDeleteConfirm = ({ skipBin } = {}) => {
@@ -721,16 +723,36 @@ const insertTemplate = (templateContent) => {
 }
 
 const onSelectionChange = (ids) => { selectedNoteIds.value = ids }
-const confirmBulkDelete = (ids) => { pendingBulkDeleteIds.value = ids; showBulkDeleteConfirm.value = true }
+const confirmBulkDelete = (payload) => {
+  pendingBulkDeleteIds.value = Array.isArray(payload) ? payload : payload?.noteIds || []
+  pendingBulkDeleteGroupIds.value = Array.isArray(payload) ? [] : payload?.groupIds || []
+  showBulkDeleteConfirm.value = true
+}
 const handleBulkDeleteConfirm = ({ skipBin } = {}) => {
   showBulkDeleteConfirm.value = false
-  if (binEnabled.value && !skipBin) {
-    for (const id of pendingBulkDeleteIds.value) softDeleteNote(id)
-    toast.show(`${pendingBulkDeleteIds.value.length} note${pendingBulkDeleteIds.value.length > 1 ? 's' : ''} moved to bin`, { type: 'success', icon: 'mdi:delete-outline' })
-  } else {
-    for (const id of pendingBulkDeleteIds.value) deleteNote(id)
+  const soft = binEnabled.value && !skipBin
+  const noteCount = pendingBulkDeleteIds.value.length
+  const groupCount = pendingBulkDeleteGroupIds.value.length
+
+  // Delete selected groups (folder + their contents) first, then standalone notes.
+  if (groupCount) groupManagement.bulkDeleteGroups(pendingBulkDeleteGroupIds.value, { soft })
+  for (const id of pendingBulkDeleteIds.value) {
+    if (soft) softDeleteNote(id)
+    else deleteNote(id)
   }
-  pendingBulkDeleteIds.value = []; syncNow()
+
+  const parts = []
+  if (noteCount) parts.push(`${noteCount} note${noteCount > 1 ? 's' : ''}`)
+  if (groupCount) parts.push(`${groupCount} group${groupCount > 1 ? 's' : ''}`)
+  if (parts.length) {
+    toast.show(`${parts.join(' and ')} ${soft ? 'moved to bin' : 'deleted'}`, {
+      type: 'success',
+      icon: 'mdi:delete-outline',
+    })
+  }
+  pendingBulkDeleteIds.value = []
+  pendingBulkDeleteGroupIds.value = []
+  syncNow()
 }
 
 const handleArchiveNote = (id) => { archiveNote(id); syncNow(id); toast.show('Note archived', { type: 'success', icon: 'mdi:archive-outline' }) }
@@ -741,22 +763,48 @@ const handleBulkUnarchive = (ids) => { bulkUnarchive(ids); syncNow(); toast.show
 // --- Bin handlers ---
 const showPermanentDeleteConfirm = ref(false)
 const pendingPermanentDeleteIds = ref([])
+const pendingPermanentDeleteGroupIds = ref([])
 
-const handleRestoreNote = (id) => { restoreNote(id); syncNow(id); toast.show('Note restored', { type: 'success', icon: 'mdi:restore' }) }
-const handlePermanentDelete = (id) => { pendingPermanentDeleteIds.value = [id]; showPermanentDeleteConfirm.value = true }
-const handleBulkRestore = (ids) => { for (const id of ids) restoreNote(id); syncNow(); toast.show(`${ids.length} note${ids.length > 1 ? 's' : ''} restored`, { type: 'success', icon: 'mdi:restore' }) }
-const handleBulkPermanentDelete = (ids) => { pendingPermanentDeleteIds.value = ids; showPermanentDeleteConfirm.value = true }
+// Restoring a note also un-deletes its (soft-deleted) folder chain so it
+// reappears in place.
+const restoreNoteWithGroups = (id) => {
+  const note = notes.value.find((n) => n.id === id)
+  restoreNote(id)
+  if (note?.groupId) restoreGroupAncestors(note.groupId)
+}
+
+const handleRestoreNote = (id) => { restoreNoteWithGroups(id); syncNow(id); toast.show('Note restored', { type: 'success', icon: 'mdi:restore' }) }
+const handlePermanentDelete = (id) => { pendingPermanentDeleteIds.value = [id]; pendingPermanentDeleteGroupIds.value = []; showPermanentDeleteConfirm.value = true }
+const handleBulkRestore = (payload) => {
+  const noteIds = Array.isArray(payload) ? payload : payload?.noteIds || []
+  const groupIds = Array.isArray(payload) ? [] : payload?.groupIds || []
+  if (groupIds.length) restoreGroups(groupIds)
+  for (const id of noteIds) restoreNoteWithGroups(id)
+  syncNow()
+  const count = noteIds.length + groupIds.length
+  toast.show(`${count} item${count > 1 ? 's' : ''} restored`, { type: 'success', icon: 'mdi:restore' })
+}
+const handleBulkPermanentDelete = (payload) => {
+  pendingPermanentDeleteIds.value = Array.isArray(payload) ? payload : payload?.noteIds || []
+  pendingPermanentDeleteGroupIds.value = Array.isArray(payload) ? [] : payload?.groupIds || []
+  showPermanentDeleteConfirm.value = true
+}
 const handlePermanentDeleteConfirm = () => {
   showPermanentDeleteConfirm.value = false
   const ids = pendingPermanentDeleteIds.value
+  const groupIds = pendingPermanentDeleteGroupIds.value
   for (const id of ids) permanentlyDeleteNote(id)
+  if (groupIds.length) permanentlyDeleteGroups(groupIds)
   syncNow()
-  toast.show(ids.length > 1 ? `${ids.length} notes permanently deleted` : 'Note permanently deleted', { type: 'success', icon: 'mdi:delete-forever-outline' })
+  const count = ids.length + groupIds.length
+  toast.show(count > 1 ? `${count} items permanently deleted` : 'Item permanently deleted', { type: 'success', icon: 'mdi:delete-forever-outline' })
   pendingPermanentDeleteIds.value = []
+  pendingPermanentDeleteGroupIds.value = []
 }
 const handlePermanentDeleteCancel = () => {
   showPermanentDeleteConfirm.value = false
   pendingPermanentDeleteIds.value = []
+  pendingPermanentDeleteGroupIds.value = []
   toast.show('Deletion cancelled', { type: 'info', icon: 'mdi:close-circle-outline' })
 }
 

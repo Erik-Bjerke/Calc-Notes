@@ -17,17 +17,43 @@
  * Groups may nest up to MAX_GROUP_DEPTH levels (a root group is level 1).
  * Notes are always leaves and may live inside a group at any level.
  *
- * When `flatMode` is true (archive / bin / active search), groups are ignored
- * and every visible note is rendered as a flat depth-0 list.
+ * When `pruneEmpty` is true (archive / bin / active tag filter) the tree is
+ * still shown, but groups that contain no matching notes anywhere in their
+ * subtree are hidden — so you only see the folders relevant to the view.
  */
 export const MAX_GROUP_DEPTH = 3
 
-export function useNoteTree({ filteredNotes, groups, flatMode }) {
+export function useNoteTree({ filteredNotes, groups, pruneEmpty }) {
   const groupsById = computed(() => {
     const m = new Map()
     for (const g of groups.value) m.set(g.id, g)
     return m
   })
+
+  const isPruning = computed(() => !!pruneEmpty?.value)
+
+  /**
+   * When pruning, the set of group ids that should remain visible: any group
+   * that (recursively) contains at least one of the currently visible notes.
+   * Returns null when not pruning (all groups visible).
+   */
+  const visibleGroupIds = computed(() => {
+    if (!isPruning.value) return null
+    const set = new Set()
+    for (const n of filteredNotes.value) {
+      let gid = n.groupId ?? null
+      const seen = new Set()
+      while (gid && !seen.has(gid) && groupsById.value.has(gid)) {
+        seen.add(gid)
+        set.add(gid)
+        gid = groupsById.value.get(gid).parentId ?? null
+      }
+    }
+    return set
+  })
+
+  const isGroupVisible = (groupId) =>
+    visibleGroupIds.value === null || visibleGroupIds.value.has(groupId)
 
   /**
    * Ordered children (notes + sub-groups interleaved) directly under `parentId`.
@@ -37,15 +63,17 @@ export function useNoteTree({ filteredNotes, groups, flatMode }) {
   const childrenOf = (parentId) => {
     const pid = parentId ?? null
     const items = []
-    if (!flatMode.value) {
-      for (const g of groups.value) {
-        if ((g.parentId ?? null) === pid) {
-          items.push({ id: g.id, kind: 'group', sortOrder: g.sortOrder ?? 0, data: g })
-        }
+    for (const g of groups.value) {
+      // A group whose parent isn't part of this view (e.g. a deleted folder
+      // under a live one, shown in the bin) falls back to the root.
+      let groupParent = g.parentId ?? null
+      if (groupParent && !groupsById.value.has(groupParent)) groupParent = null
+      if (groupParent === pid && isGroupVisible(g.id)) {
+        items.push({ id: g.id, kind: 'group', sortOrder: g.sortOrder ?? 0, data: g })
       }
     }
     for (const n of filteredNotes.value) {
-      let noteParent = flatMode.value ? null : (n.groupId ?? null)
+      let noteParent = n.groupId ?? null
       // A note whose group no longer exists falls back to the root.
       if (noteParent && !groupsById.value.has(noteParent)) noteParent = null
       if (noteParent === pid) {
@@ -154,6 +182,7 @@ export function useNoteTree({ filteredNotes, groups, flatMode }) {
     displayItems,
     childrenOf,
     groupsById,
+    visibleGroupIds,
     groupLevel,
     subtreeHeight,
     descendantIds,

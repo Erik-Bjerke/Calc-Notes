@@ -13,7 +13,7 @@
     >
       <div class="flex items-center justify-between">
         <span class="text-sm font-medium text-primary-700 dark:text-primary-300">
-          {{ selectedIds.size }} selected
+          {{ selectedCount }} selected
         </span>
         <UiButton
           variant="ghost"
@@ -47,7 +47,7 @@
             variant="solid"
             color="primary"
             size="sm"
-            :disabled="selectedIds.size === 0"
+            :disabled="selectedCount === 0"
             class="flex-1"
             @click="$emit('bulk-restore')"
           >
@@ -58,7 +58,7 @@
             variant="solid"
             color="red"
             size="sm"
-            :disabled="selectedIds.size === 0"
+            :disabled="selectedCount === 0"
             class="flex-1"
             @click="$emit('bulk-permanent-delete')"
           >
@@ -69,10 +69,11 @@
         <!-- Normal mode actions -->
         <template v-else>
           <UiButton
+            v-if="canGroup"
             variant="solid"
             color="primary"
             size="sm"
-            :disabled="selectedIds.size === 0"
+            :disabled="selectedCount === 0"
             class="flex-1"
             @click="$emit('bulk-group')"
           >
@@ -84,7 +85,7 @@
             variant="solid"
             color="primary"
             size="sm"
-            :disabled="selectedIds.size === 0"
+            :disabled="selectedCount === 0"
             class="flex-1"
             @click="$emit('bulk-unarchive')"
           >
@@ -96,7 +97,7 @@
             variant="solid"
             color="gray"
             size="sm"
-            :disabled="selectedIds.size === 0"
+            :disabled="selectedCount === 0"
             class="flex-1"
             @click="$emit('bulk-archive')"
           >
@@ -108,7 +109,7 @@
             color="red"
             size="sm"
             icon-only
-            :disabled="selectedIds.size === 0"
+            :disabled="selectedCount === 0"
             class="flex-shrink-0"
             title="Delete"
             @click="$emit('bulk-delete')"
@@ -125,6 +126,8 @@
 defineProps({
   selectMode: { type: Boolean, required: true },
   selectedIds: { type: Set, required: true },
+  selectedCount: { type: Number, default: 0 },
+  canGroup: { type: Boolean, default: true },
   allSelected: { type: Boolean, required: true },
   showBin: { type: Boolean, required: true },
   showArchive: { type: Boolean, required: true },

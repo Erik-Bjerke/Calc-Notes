@@ -4,15 +4,33 @@
     :class="{
       'bg-primary-50/70 dark:bg-primary-500/15 ring-1 ring-inset ring-primary-400/70':
         dropIndicator === 'inside',
+      'bg-primary-50 dark:bg-primary-900/20': selectMode && selected,
     }"
     :style="{ paddingLeft: indent + 'px', paddingRight: '2px' }"
     :title="group.name"
-    @click="$emit('toggle-collapse', group.id)"
+    @click="onRowClick"
   >
-    <!-- Twisty -->
+    <!-- Select-mode checkbox -->
+    <div
+      v-if="selectMode"
+      class="flex-shrink-0 mr-1 flex items-center justify-center"
+      @click.stop="$emit('toggle-select', group.id)"
+    >
+      <div
+        class="w-4 h-4 rounded border-2 flex items-center justify-center transition-colors"
+        :class="
+          selected ? 'bg-primary-600 border-primary-600' : 'border-gray-300 dark:border-gray-600'
+        "
+      >
+        <Icon v-if="selected" name="mdi:check" class="w-3 h-3 text-white" />
+      </div>
+    </div>
+
+    <!-- Twisty (always toggles collapse, even in select mode) -->
     <Icon
       :name="group.collapsed ? 'mdi:chevron-right' : 'mdi:chevron-down'"
       class="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400"
+      @click.stop="$emit('toggle-collapse', group.id)"
     />
     <!-- Folder icon -->
     <Icon
@@ -26,6 +44,7 @@
 
     <!-- Three-dots menu (reveals on hover / focus) -->
     <div
+      v-if="!selectMode && !binMode"
       ref="menuRef"
       class="relative flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
       :class="{ 'opacity-100': menuOpen }"
@@ -86,11 +105,20 @@ const props = defineProps({
   level: { type: Number, default: 1 }, // 1-based nesting level
   maxDepth: { type: Number, default: 3 },
   indent: { type: Number, default: 8 }, // left padding (px) for nesting depth
+  selectMode: { type: Boolean, default: false },
+  selected: { type: Boolean, default: false },
+  binMode: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['toggle-collapse', 'edit', 'delete', 'add-subgroup'])
+const emit = defineEmits(['toggle-collapse', 'edit', 'delete', 'add-subgroup', 'toggle-select'])
 
 const canAddSubgroup = computed(() => props.level < props.maxDepth)
+
+// In select mode a row click toggles selection; otherwise it expands/collapses.
+const onRowClick = () => {
+  if (props.selectMode) emit('toggle-select', props.group.id)
+  else emit('toggle-collapse', props.group.id)
+}
 
 const menuOpen = ref(false)
 const menuRef = ref(null)
