@@ -148,7 +148,7 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   displayItems: { type: Array, required: true },
   showBin: { type: Boolean, required: true },
   showArchive: { type: Boolean, required: true },
@@ -214,6 +214,24 @@ const lineStyle = (depth) => `margin-left: ${BASE + depth * STEP + 16}px;`
 
 const listRef = ref(null)
 defineExpose({ listRef })
+
+// Scroll the active note into view when it changes (e.g. revealed from search).
+// `block: 'nearest'` keeps it a no-op when the row is already visible.
+watch(
+  () => props.currentNoteId,
+  (id) => {
+    if (!id) return
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        const root = listRef.value
+        if (!root) return
+        const key = window.CSS && CSS.escape ? CSS.escape(id) : id
+        const el = root.querySelector(`[data-item-id="${key}"]`)
+        el?.scrollIntoView({ block: 'nearest' })
+      })
+    })
+  },
+)
 </script>
 
 <style scoped>

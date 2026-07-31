@@ -62,18 +62,27 @@
 
     <div class="flex-1 flex overflow-hidden">
       <aside
-        class="flex-shrink-0 hidden lg:block transition-all duration-300 ease-in-out relative z-20"
-        :class="!focusMode && showSidebar ? 'w-80 opacity-100' : 'w-0 opacity-0 overflow-hidden'"
+        class="flex-shrink-0 hidden lg:block transition-all duration-300 ease-in-out relative z-20 overflow-hidden"
+        :class="
+          !focusMode && showSidebar
+            ? (sidebarPanelOpen ? 'w-[368px]' : 'w-12') +
+              ' opacity-100 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.15)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)]'
+            : 'w-0 opacity-0'
+        "
       >
-        <div class="w-80 h-full relative shadow-[4px_0_12px_-4px_rgba(0,0,0,0.15)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)]">
-          <Transition
-            enter-active-class="transition-opacity duration-500" enter-from-class="opacity-0" enter-to-class="opacity-100"
-            leave-active-class="transition-opacity duration-500" leave-from-class="opacity-100" leave-to-class="opacity-0"
-          >
-            <div v-if="sidebarGlow" class="absolute inset-0 z-10 pointer-events-none bg-primary-500/25 dark:bg-primary-400/20" />
-          </Transition>
-          <MainSidebar v-bind="sidebarProps" v-on="sidebarEvents" />
-        </div>
+        <Transition
+          enter-active-class="transition-opacity duration-500" enter-from-class="opacity-0" enter-to-class="opacity-100"
+          leave-active-class="transition-opacity duration-500" leave-from-class="opacity-100" leave-to-class="opacity-0"
+        >
+          <div v-if="sidebarGlow" class="absolute inset-0 z-10 pointer-events-none bg-primary-500/25 dark:bg-primary-400/20" />
+        </Transition>
+        <SidebarWorkbench
+          v-bind="sidebarProps"
+          v-model:active-panel="activePanel"
+          v-model:panel-open="sidebarPanelOpen"
+          class="h-full"
+          v-on="sidebarEvents"
+        />
       </aside>
 
       <Teleport to="body">
@@ -89,7 +98,7 @@
         >
           <aside
             v-if="showSidebar"
-            class="fixed inset-y-0 left-0 z-30 w-80 shadow-xl lg:hidden"
+            class="fixed inset-y-0 left-0 z-30 w-[340px] max-w-[85vw] shadow-xl lg:hidden"
             :style="{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)' }"
           >
             <div class="h-full relative">
@@ -99,7 +108,12 @@
               >
                 <div v-if="sidebarGlow" class="absolute inset-0 z-10 pointer-events-none bg-primary-500/25 dark:bg-primary-400/20" />
               </Transition>
-              <MainSidebar v-bind="sidebarProps" v-on="sidebarEvents" />
+              <SidebarWorkbench
+                v-bind="sidebarProps"
+                v-model:active-panel="activePanel"
+                class="h-full"
+                v-on="sidebarEvents"
+              />
             </div>
           </aside>
         </Transition>
@@ -413,6 +427,10 @@ const { isMac: _isMac, modLabel, handlers: shortcutHandlers } = useKeyboardShort
 const showSidebar = ref(true)
 const focusMode = ref(false)
 
+// VSCode-style activity bar: which panel is active + whether it's expanded.
+const activePanel = ref('explorer') // 'explorer' | 'search'
+const sidebarPanelOpen = ref(true)
+
 // ── Back-button: close mobile sidebar when open ──
 const { register: registerBack, unregister: unregisterBack } = useBackButton()
 let sidebarBackId = null
@@ -630,6 +648,25 @@ const selectNote = (id) => {
   if (window.innerWidth < 1024) showSidebar.value = false
 }
 
+// Select a note and reveal it in the Explorer tree: expand every ancestor
+// group so the note becomes visible (VSCode-style "reveal"). Scrolling the
+// row into view is handled by the notes list itself.
+const revealNoteInTree = (id) => {
+  const note = notes.value.find((n) => n.id === id)
+  if (note && note.groupId) {
+    let gid = note.groupId
+    const seen = new Set()
+    while (gid && !seen.has(gid)) {
+      seen.add(gid)
+      const group = groups.value.find((g) => g.id === gid)
+      if (!group) break
+      if (group.collapsed) toggleGroupCollapsed(group.id)
+      gid = group.parentId
+    }
+  }
+  selectNote(id)
+}
+
 const openEditModal = (id) => { currentNoteId.value = id; showMetaModal.value = true }
 
 const updateContent = (content) => {
@@ -739,11 +776,15 @@ const sidebarProps = computed(() => ({
 }))
 
 const sidebarEvents = {
-  'new-note': createNote, 'select-note': selectNote, 'delete-note': confirmDelete,
+  'new-note': createNote, 'select-note': revealNoteInTree, 'delete-note': confirmDelete,
   'show-meta': () => { if (currentNote.value) showMetaModal.value = true },
   'edit-note': openEditModal, 'bulk-delete': confirmBulkDelete, 'selection-change': onSelectionChange,
   'show-help': () => { showHelp.value = true },
-  'show-locale-settings': () => { showLocaleSettings.value = true },
+  'show-locale-settings': () => { settingsInitialSection.value = 'general'; showLocaleSettings.value = true },
+  'show-locale-settings-locales': () => { settingsInitialSection.value = 'locales'; showLocaleSettings.value = true },
+  'show-locale-settings-security': () => { settingsInitialSection.value = 'security'; showLocaleSettings.value = true },
+  'show-locale-settings-sessions': () => { settingsInitialSection.value = 'sessions'; showLocaleSettings.value = true },
+  'show-locale-settings-shared-notes': () => { settingsInitialSection.value = 'shared'; showLocaleSettings.value = true },
   'show-auth': () => { authHandlers.showAuthModal.value = true },
   logout: authHandlers.handleLogout, 'edit-profile': () => { settingsInitialSection.value = 'profile'; showLocaleSettings.value = true },
   'lock-app': () => { appLock.lock() },

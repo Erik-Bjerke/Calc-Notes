@@ -3,7 +3,7 @@
     <template #trigger="{ toggle }">
       <UiButton variant="ghost" color="gray" size="sm" title="File menu" @click="toggle">
         <Icon name="mdi:file-document-outline" class="w-4.5 h-4.5 block" />
-        <span class="hidden sm:inline text-sm">File</span>
+        <span class="text-sm">File</span>
         <Icon
           name="mdi:chevron-down"
           class="w-3 h-3 block transition-transform"

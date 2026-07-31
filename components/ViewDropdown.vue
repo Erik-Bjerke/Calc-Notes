@@ -3,7 +3,7 @@
     <template #trigger="{ toggle }">
       <UiButton variant="ghost" color="gray" size="sm" title="View menu" @click="toggle">
         <Icon name="mdi:eye-outline" class="w-4.5 h-4.5 block" />
-        <span class="hidden sm:inline text-sm">View</span>
+        <span class="text-sm">View</span>
         <Icon
           name="mdi:chevron-down"
           class="w-3 h-3 block transition-transform"

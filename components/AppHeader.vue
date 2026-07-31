@@ -105,101 +105,6 @@
       </div>
       </div>
 
-      <!-- User avatar dropdown -->
-      <UiDropdown ref="avatarDropdownRef" :align="preferences.avatarPosition === 'left' ? 'left' : 'right'" width="w-64" :class="preferences.avatarPosition === 'left' ? 'order-first mr-2.5' : 'order-last mr-1.5'">
-        <template #trigger="{ toggle }">
-          <button
-            class="flex-shrink-0 aspect-square h-full rounded-full focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-0 flex items-center justify-center"
-            @click="toggle"
-          >
-            <UiAvatar
-              v-if="isLoggedIn"
-              :src="user?.avatarUrl"
-              size="md"
-            />
-            <UiAvatar
-              v-else
-              size="md"
-              color="gray"
-              fallback-icon="mdi:account-circle-outline"
-            />
-          </button>
-        </template>
-
-        <div class="py-1">
-          <template v-if="isLoggedIn">
-            <UiButton variant="menu-item" class="px-4" @click="avatarAction('edit-profile')">
-              <Icon name="mdi:account-edit-outline" class="w-4 h-4" />
-              Edit Profile
-            </UiButton>
-          </template>
-          <UiButton variant="menu-item" class="px-4" @click="avatarAction('show-locale-settings-locales')">
-            <Icon name="mdi:translate" class="w-4 h-4" />
-            Language
-          </UiButton>
-          <UiButton variant="menu-item" class="px-4" @click="avatarAction('show-locale-settings-shared-notes')">
-            <Icon name="mdi:share-variant-outline" class="w-4 h-4" />
-            Shared Notes
-          </UiButton>
-
-          <UiDivider class="my-1" />
-
-          <UiButton variant="menu-item" class="px-4" @click="avatarAction('show-locale-settings-sessions')">
-            <Icon name="mdi:devices" class="w-4 h-4" />
-            Sessions
-          </UiButton>
-          <UiButton variant="menu-item" class="px-4" @click="avatarAction('show-locale-settings-security')">
-            <Icon name="mdi:shield-lock-outline" class="w-4 h-4" />
-            Security
-          </UiButton>
-
-          <UiDivider class="my-1" />
-
-          <UiButton variant="menu-item" class="px-4" @click="avatarAction('show-locale-settings')">
-            <Icon name="mdi:cog-outline" class="w-4 h-4" />
-            Settings
-          </UiButton>
-
-          <UiDivider class="my-1 mb-3" />
-
-          <!-- Sign out / Lock (logged in) or Sign In / Sign Up (logged out) -->
-          <template v-if="isLoggedIn">
-            <UiDropdownRow>
-              <UiButton
-                v-if="appLockEnabled"
-                variant="menu-item"
-                class="flex-1 justify-center"
-                @click="avatarAction('lock-app')"
-              >
-                <Icon name="mdi:lock" class="w-4 h-4" />
-                Lock
-              </UiButton>
-              <UiDivider v-if="appLockEnabled" direction="vertical" />
-              <UiButton
-                variant="menu-item"
-                color="red"
-                class="flex-1 justify-center"
-                @click="avatarAction('logout')"
-              >
-                <Icon name="mdi:logout" class="w-4 h-4" />
-                Sign Out
-              </UiButton>
-            </UiDropdownRow>
-          </template>
-          <template v-else>
-            <UiDropdownRow>
-              <UiButton
-                variant="menu-item"
-                class="flex-1 justify-center"
-                @click="avatarAction('show-auth')"
-              >
-                <Icon name="mdi:login" class="w-4 h-4" />
-                Sign In / Sign Up
-              </UiButton>
-            </UiDropdownRow>
-          </template>
-        </div>
-      </UiDropdown>
     </div>
   </header>
 </template>
@@ -266,7 +171,7 @@ defineProps({
   },
 })
 
-const emit = defineEmits([
+defineEmits([
   'toggle-sidebar',
   'toggle-focus',
   'show-templates',
@@ -301,12 +206,6 @@ const emit = defineEmits([
   'logout',
 ])
 
-const avatarDropdownRef = ref(null)
-
-const avatarAction = (action) => {
-  avatarDropdownRef.value?.close()
-  emit(action)
-}
 </script>
 
 <style scoped>

@@ -1,10 +1,7 @@
 <template>
   <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
     <!-- Selection Toolbar / Header — crossfade in a fixed container -->
-    <div
-      class="relative border-b border-gray-200 dark:border-gray-800 flex-shrink-0"
-      :class="showFilters ? 'overflow-visible' : 'overflow-hidden'"
-    >
+    <div class="relative border-b border-gray-200 dark:border-gray-800 flex-shrink-0 overflow-hidden">
       <!-- Select toolbar -->
       <MainSidebarSelectionToolbar
         :select-mode="selectMode"
@@ -25,21 +22,11 @@
       <!-- Normal header (always in flow to maintain height) -->
       <MainSidebarSearchAndFilters
         :select-mode="selectMode"
-        :search-query="searchQuery"
-        :show-filters="showFilters"
-        :has-active-filters="hasActiveFilters"
-        :filters="filters"
         :all-tags="allTags"
         :selected-tags="selectedTags"
         :current-note="currentNote"
-        @new-note="handleNewNote"
         @show-meta="$emit('show-meta')"
         @toggle-select-mode="toggleSelectMode"
-        @update:search-query="searchQuery = $event"
-        @toggle-filters="showFilters = !showFilters"
-        @update:filter-date-range="filters.dateRange = $event"
-        @toggle-filter="toggleFilter"
-        @clear-filters="clearFilters"
         @toggle-tag="toggleTag"
       />
     </div>
@@ -159,10 +146,8 @@ const emit = defineEmits([
   'tree-move',
 ])
 
-const searchQuery = ref('')
 const selectedTags = ref([])
 const notesListRef = ref(null)
-const showFilters = ref(false)
 
 // Expose listRef for parent access
 const listRef = computed(() => notesListRef.value?.listRef)
@@ -187,14 +172,8 @@ watch(hasArchivedNotes, (has) => {
   if (!has && sidebarView.value === 'archive') sidebarView.value = 'notes'
 })
 
-// Switch to notes view when creating a new note from the sidebar button
-const handleNewNote = () => {
-  if (sidebarView.value !== 'notes') sidebarView.value = 'notes'
-  emit('new-note')
-}
-
-// Switch to notes view when a new note is created from outside (header, keyboard shortcut)
-// and the current view is archive or bin
+// Switch to notes view when a new note is created (from the activity bar,
+// header, or keyboard shortcut) while the current view is archive or bin
 watch(() => props.currentNoteId, (newId) => {
   if (!newId || sidebarView.value === 'notes') return
   const note = props.notes.find((n) => n.id === newId)
@@ -203,44 +182,11 @@ watch(() => props.currentNoteId, (newId) => {
   }
 })
 
-// ── Filters ──────────────────────────────────────────────
-
-const filters = reactive({
-  searchContent: true,
-  dateRange: '',
-  hasDescription: false,
-  hasTags: false,
-  emptyOnly: false,
-})
-
-const hasActiveFilters = computed(() => {
-  return (
-    !filters.searchContent ||
-    filters.dateRange !== '' ||
-    filters.hasDescription ||
-    filters.hasTags ||
-    filters.emptyOnly
-  )
-})
-
-const toggleFilter = (key) => {
-  filters[key] = !filters[key]
-}
-
-const clearFilters = () => {
-  filters.searchContent = true
-  filters.dateRange = ''
-  filters.hasDescription = false
-  filters.hasTags = false
-  filters.emptyOnly = false
-  selectedTags.value = []
-}
-
 // ── Reorder / filter gating ──────────────────────────────
+// Search lives in the dedicated Search panel now; the Explorer only filters
+// by tag. When a tag filter is active the tree flattens to matching notes.
 
-const isFiltering = computed(
-  () => searchQuery.value.trim() !== '' || selectedTags.value.length > 0 || hasActiveFilters.value,
-)
+const isFiltering = computed(() => selectedTags.value.length > 0)
 const canReorder = computed(() => !selectMode.value && !isFiltering.value)
 
 // ── Multi-select ─────────────────────────────────────────
@@ -342,49 +288,10 @@ const filteredNotes = computed(() => {
     result = result.filter((n) => (showArchive.value ? !!n.archived : !n.archived))
   }
 
-  const q = searchQuery.value.trim().toLowerCase()
-  if (q) {
-    result = result.filter((n) => {
-      const matchTitle = (n.title || '').toLowerCase().includes(q)
-      const matchDesc = (n.description || '').toLowerCase().includes(q)
-      const matchTags = (n.tags || []).some((t) => t.toLowerCase().includes(q))
-      const matchContent = filters.searchContent && (n.content || '').toLowerCase().includes(q)
-      const matchInternalName = (n.internalName || '').toLowerCase().includes(q)
-      return matchTitle || matchDesc || matchTags || matchContent || matchInternalName
-    })
-  }
   if (selectedTags.value.length) {
     result = result.filter((n) => selectedTags.value.every((t) => (n.tags || []).includes(t)))
   }
-  if (filters.dateRange) {
-    const now = Date.now()
-    const day = 86400000
-    result = result.filter((n) => {
-      const updated = new Date(n.updatedAt).getTime()
-      const age = now - updated
-      switch (filters.dateRange) {
-        case 'today':
-          return age < day
-        case 'week':
-          return age < 7 * day
-        case 'month':
-          return age < 30 * day
-        case 'older':
-          return age >= 30 * day
-        default:
-          return true
-      }
-    })
-  }
-  if (filters.hasDescription) {
-    result = result.filter((n) => (n.description || '').trim().length > 0)
-  }
-  if (filters.hasTags) {
-    result = result.filter((n) => (n.tags || []).length > 0)
-  }
-  if (filters.emptyOnly) {
-    result = result.filter((n) => !(n.content || '').trim())
-  }
+
   return result.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
 })
 
