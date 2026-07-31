@@ -1,5 +1,5 @@
 [tools]
-node = "22.20.0"
+node = "24.18.1"
 java = "openjdk-21"
 
 # System packages required for `npm run build:electron` (not managed by mise):

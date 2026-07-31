@@ -29,7 +29,7 @@ Built with Nuxt 4, Vue 3, CodeMirror, Tailwind CSS, and Dexie.js.
 
 ## Prerequisites
 
-- Node.js 22.20.0 (pinned in `mise.toml` — use [mise](https://mise.jdx.dev/) or nvm)
+- Node.js 24.18.1 (pinned in `mise.toml` — use [mise](https://mise.jdx.dev/) or nvm)
 - npm
 
 ## Getting started
