@@ -98,6 +98,34 @@
 
     <UiDivider />
 
+    <div
+      class="px-3 pt-1.5 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
+    >
+      Results
+    </div>
+
+    <UiButton
+      v-for="opt in resultsOptions"
+      :key="opt.value"
+      variant="menu-item"
+      :class="
+        inlineMode === opt.value
+          ? 'text-gray-900 dark:text-gray-100'
+          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+      "
+      @click="setInlineMode(opt.value)"
+    >
+      <Icon
+        :key="opt.value + '-' + inlineMode"
+        :name="inlineMode === opt.value ? 'mdi:radiobox-marked' : 'mdi:radiobox-blank'"
+        class="w-4 h-4 block flex-shrink-0"
+      />
+      <Icon :name="opt.icon" class="w-4 h-4 block flex-shrink-0" />
+      <span>{{ opt.label }}</span>
+    </UiButton>
+
+    <UiDivider />
+
     <!-- Theme toggle -->
     <UiButton variant="menu-item" @click="toggleTheme">
       <Icon name="mdi:theme-light-dark" class="w-4 h-4 block flex-shrink-0" />
@@ -153,12 +181,18 @@ const props = defineProps({
     default: 'edit',
     validator: (v) => ['off', 'edit', 'full'].includes(v),
   },
+  inlineMode: {
+    type: String,
+    default: 'left',
+    validator: (v) => ['left', 'off', 'right'].includes(v),
+  },
   editorFontSize: { type: Number, default: 16 },
   checkForUpdate: { type: Function, default: null },
 })
 
 const emit = defineEmits([
   'update:markdown-mode',
+  'update:inline-mode',
   'zoom-in',
   'zoom-out',
   'zoom-reset',
@@ -184,6 +218,12 @@ const mdOptions = [
   { value: 'off', label: 'Edit Only' },
 ]
 
+const resultsOptions = [
+  { value: 'left', label: 'Results on left', icon: 'mdi:dock-left' },
+  { value: 'off', label: 'Results off', icon: 'mdi:eye-off-outline' },
+  { value: 'right', label: 'Results on right', icon: 'mdi:dock-right' },
+]
+
 const colorMode = useColorMode()
 const isDark = computed(() => colorMode.value === 'dark')
 const toggleTheme = () => {
@@ -193,6 +233,11 @@ const toggleTheme = () => {
 const setMarkdownMode = (mode) => {
   dropdownRef.value?.close()
   emit('update:markdown-mode', mode)
+}
+
+const setInlineMode = (mode) => {
+  dropdownRef.value?.close()
+  emit('update:inline-mode', mode)
 }
 
 const action = (name) => {

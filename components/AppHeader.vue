@@ -85,9 +85,11 @@
           />
           <ViewDropdown
             :markdown-mode="markdownMode"
+            :inline-mode="inlineMode"
             :editor-font-size="editorFontSize"
             :check-for-update="checkForUpdate"
             @update:markdown-mode="(mode) => $emit('update:markdown-mode', mode)"
+            @update:inline-mode="(mode) => $emit('update:inline-mode', mode)"
             @zoom-in="$emit('zoom-in')"
             @zoom-out="$emit('zoom-out')"
             @zoom-reset="$emit('zoom-reset')"
@@ -112,20 +114,6 @@
 
         <!-- Spacer on mobile -->
         <div class="flex-1 lg:hidden" />
-
-        <!-- Right: Actions -->
-        <div class="flex items-center gap-0.5">
-          <!-- Inline results mode group -->
-          <UiButtonsGroup
-            :model-value="inlineMode"
-            :options="[
-              { value: 'left', icon: 'mdi:dock-left', title: 'Results on left' },
-              { value: 'off', icon: 'mdi:eye-off-outline', title: 'Results off' },
-              { value: 'right', icon: 'mdi:dock-right', title: 'Results on right' },
-            ]"
-            @update:model-value="$emit('update:inline-mode', $event)"
-          />
-        </div>
       </div>
       </div>
 
