@@ -262,10 +262,8 @@ Discounted: prev - 10%
         saveDeletedIds()
       }
 
-      if (currentNoteId.value === id) {
-        const next = notes.value.find((n) => n.id !== id && !n.archived && !n.deletedAt)
-        currentNoteId.value = next ? next.id : notes.value.length > 0 ? notes.value[0].id : null
-      }
+      // Deleting the open note clears the selection (no note selected).
+      if (currentNoteId.value === id) currentNoteId.value = null
 
       // Remove from DB
       db.notes.delete(id)
@@ -279,10 +277,8 @@ Discounted: prev - 10%
     if (note) {
       note.deletedAt = new Date().toISOString()
       note.updatedAt = new Date().toISOString()
-      if (currentNoteId.value === id) {
-        const next = notes.value.find((n) => n.id !== id && !n.archived && !n.deletedAt)
-        currentNoteId.value = next ? next.id : null
-      }
+      // Binning the open note clears the selection (no note selected).
+      if (currentNoteId.value === id) currentNoteId.value = null
       saveNotes()
     }
   }
@@ -348,11 +344,8 @@ Discounted: prev - 10%
     if (note) {
       note.archived = true
       note.updatedAt = new Date().toISOString()
-      // If archiving the current note, select the next non-archived note
-      if (currentNoteId.value === id) {
-        const next = notes.value.find((n) => n.id !== id && !n.archived)
-        currentNoteId.value = next ? next.id : null
-      }
+      // Archiving the open note clears the selection (no note selected).
+      if (currentNoteId.value === id) currentNoteId.value = null
       saveNotes()
     }
   }
@@ -375,11 +368,8 @@ Discounted: prev - 10%
         note.updatedAt = now
       }
     }
-    // If current note was archived, select next non-archived
-    if (ids.includes(currentNoteId.value)) {
-      const next = notes.value.find((n) => !ids.includes(n.id) && !n.archived)
-      currentNoteId.value = next ? next.id : null
-    }
+    // If the open note was archived, clear the selection.
+    if (ids.includes(currentNoteId.value)) currentNoteId.value = null
     saveNotes()
   }
 

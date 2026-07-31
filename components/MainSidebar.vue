@@ -180,15 +180,23 @@ watch(hasArchivedNotes, (has) => {
   if (!has && sidebarView.value === 'archive') sidebarView.value = 'notes'
 })
 
-// Switch to notes view when a new note is created (from the activity bar,
-// header, or keyboard shortcut) while the current view is archive or bin
-watch(() => props.currentNoteId, (newId) => {
-  if (!newId || sidebarView.value === 'notes') return
-  const note = props.notes.find((n) => n.id === newId)
-  if (note && !note.archived && !note.deletedAt) {
-    sidebarView.value = 'notes'
-  }
-})
+// Switch to the Notes view whenever the current note is (or becomes) a live
+// note — covers creating a note, and restoring/unarchiving the open note
+// (where the id doesn't change but its archived/deleted state does).
+watch(
+  () => {
+    const note = props.notes.find((n) => n.id === props.currentNoteId)
+    return `${props.currentNoteId}|${note?.archived ? 1 : 0}|${note?.deletedAt ? 1 : 0}`
+  },
+  () => {
+    const id = props.currentNoteId
+    if (!id || sidebarView.value === 'notes') return
+    const note = props.notes.find((n) => n.id === id)
+    if (note && !note.archived && !note.deletedAt) {
+      sidebarView.value = 'notes'
+    }
+  },
+)
 
 // ── Reorder / filter gating ──────────────────────────────
 // Search lives in the dedicated Search panel now; the Explorer only filters

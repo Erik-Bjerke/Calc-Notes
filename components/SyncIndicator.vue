@@ -9,7 +9,8 @@
   >
     <div
       v-if="syncing"
-      class="fixed bottom-4 right-4 z-50 p-2 rounded-full bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700"
+      class="fixed right-2 z-50 p-2 rounded-full bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700"
+      :style="{ top: 'calc(env(safe-area-inset-top, 0px) + 0.4rem)' }"
       title="Syncing..."
       role="status"
       aria-label="Syncing in progress"

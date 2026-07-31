@@ -49,11 +49,12 @@
       {{ note.title || 'Untitled' }}
     </span>
 
-    <!-- Sync pending dot -->
-    <span
+    <!-- Unsaved / unsynced indicator -->
+    <Icon
       v-if="pending && isLoggedIn"
-      class="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 mx-1"
-      title="Not synced"
+      name="mdi:content-save-outline"
+      class="flex-shrink-0 w-4 h-4 mx-0.5 text-gray-400 dark:text-gray-500"
+      title="Unsaved changes — not synced yet"
     />
 
     <!-- Three-dots menu (reveals on hover / focus) -->

@@ -814,7 +814,7 @@ const handleBulkDeleteConfirm = ({ skipBin } = {}) => {
 }
 
 const handleArchiveNote = (id) => { archiveNote(id); syncNow(id); toast.show('Note archived', { type: 'success', icon: 'mdi:archive-outline' }) }
-const handleUnarchiveNote = (id) => { unarchiveNote(id); syncNow(id); toast.show('Note unarchived', { type: 'success', icon: 'mdi:package-up' }) }
+const handleUnarchiveNote = (id) => { unarchiveNote(id); revealNoteInTree(id); syncNow(id); toast.show('Note unarchived', { type: 'success', icon: 'mdi:package-up' }) }
 const handleBulkArchive = (ids) => { bulkArchive(ids); syncNow(); toast.show(`${ids.length} note${ids.length > 1 ? 's' : ''} archived`, { type: 'success', icon: 'mdi:archive-outline' }) }
 const handleBulkUnarchive = (ids) => { bulkUnarchive(ids); syncNow(); toast.show(`${ids.length} note${ids.length > 1 ? 's' : ''} unarchived`, { type: 'success', icon: 'mdi:package-up' }) }
 
@@ -831,7 +831,7 @@ const restoreNoteWithGroups = (id) => {
   if (note?.groupId) restoreGroupAncestors(note.groupId)
 }
 
-const handleRestoreNote = (id) => { restoreNoteWithGroups(id); syncNow(id); toast.show('Note restored', { type: 'success', icon: 'mdi:restore' }) }
+const handleRestoreNote = (id) => { restoreNoteWithGroups(id); revealNoteInTree(id); syncNow(id); toast.show('Note restored', { type: 'success', icon: 'mdi:restore' }) }
 const handlePermanentDelete = (id) => { pendingPermanentDeleteIds.value = [id]; pendingPermanentDeleteGroupIds.value = []; showPermanentDeleteConfirm.value = true }
 const handleBulkRestore = (payload) => {
   const noteIds = Array.isArray(payload) ? payload : payload?.noteIds || []
