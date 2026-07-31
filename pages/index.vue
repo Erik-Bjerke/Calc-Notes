@@ -26,7 +26,6 @@
         :editor-font-size="localePrefs.preferences.editorFontSize ?? 16"
         :check-for-update="sw.checkForUpdate"
         @toggle-sidebar="showSidebar = !showSidebar"
-        @show-meta="currentNote && (showMetaModal = true)"
         @apply-format="applyFormat"
         @indent="editorRef?.indentLine()"
         @outdent="editorRef?.outdentLine()"
@@ -737,7 +736,7 @@ const handleRestoreFromBinConfirm = () => {
 
 // --- Sidebar props/events (shared between desktop and mobile) ---
 const sidebarProps = computed(() => ({
-  notes: notes.value, groups: groups.value, currentNoteId: currentNoteId.value,
+  notes: notes.value, groups: groups.value, currentNoteId: currentNoteId.value, currentNote: currentNote.value,
   allTags: allTags.value, isLoggedIn: auth.isLoggedIn.value, user: auth.user.value,
   appLockEnabled: appLock.settings.enabled,
   sharedNoteIds: sharedNoteIds.value, sharedNotesMap: sharedNotesMap.value,
@@ -746,6 +745,7 @@ const sidebarProps = computed(() => ({
 
 const sidebarEvents = {
   'new-note': createNote, 'select-note': selectNote, 'delete-note': confirmDelete,
+  'show-meta': () => { if (currentNote.value) showMetaModal.value = true },
   'edit-note': openEditModal, 'bulk-delete': confirmBulkDelete, 'selection-change': onSelectionChange,
   'show-help': () => { showHelp.value = true },
   'show-locale-settings': () => { showLocaleSettings.value = true },

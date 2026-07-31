@@ -1,9 +1,29 @@
 <template>
-  <div class="p-4 space-y-3" :class="{ invisible: selectMode }">
-    <UiButton variant="solid" color="primary" block @click="$emit('new-note')">
-      <Icon name="mdi:plus" class="w-5 h-5" />
-      <span>New Note</span>
-    </UiButton>
+  <div class="p-4 lg:pt-0 space-y-3" :class="{ invisible: selectMode }">
+    <div class="flex items-center gap-2">
+      <UiButton
+        variant="ghost"
+        color="gray"
+        class="min-w-0 flex-1 px-2 py-1 bg-gray-200/50 dark:bg-gray-800/50 rounded-md"
+        @click="$emit('show-meta')"
+      >
+        <h1 class="text-sm font-semibold leading-tight text-gray-900 dark:text-gray-400 truncate">
+          {{ currentNote?.title || 'Numori' }}
+        </h1>
+      </UiButton>
+
+      <UiButton
+        variant="solid"
+        color="primary"
+        icon-only
+        shape="circle"
+        class="flex-shrink-0"
+        title="New note"
+        @click="$emit('new-note')"
+      >
+        <Icon name="mdi:plus" class="w-5 h-5" />
+      </UiButton>
+    </div>
 
     <!-- Search + select toggle + filters -->
     <div class="flex items-center gap-2">
@@ -183,10 +203,12 @@ defineProps({
   filters: { type: Object, required: true },
   allTags: { type: Array, required: true },
   selectedTags: { type: Array, required: true },
+  currentNote: { type: Object, default: null },
 })
 
 defineEmits([
   'new-note',
+  'show-meta',
   'toggle-select-mode',
   'update:search-query',
   'toggle-filters',

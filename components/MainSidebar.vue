@@ -31,7 +31,9 @@
         :filters="filters"
         :all-tags="allTags"
         :selected-tags="selectedTags"
+        :current-note="currentNote"
         @new-note="handleNewNote"
+        @show-meta="$emit('show-meta')"
         @toggle-select-mode="toggleSelectMode"
         @update:search-query="searchQuery = $event"
         @toggle-filters="showFilters = !showFilters"
@@ -105,6 +107,7 @@ const props = defineProps({
   notes: { type: Array, required: true },
   groups: { type: Array, default: () => [] },
   currentNoteId: { type: String, default: null },
+  currentNote: { type: Object, default: null },
   allTags: { type: Array, default: () => [] },
   isLoggedIn: { type: Boolean, default: false },
   user: { type: Object, default: null },
@@ -117,6 +120,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'new-note',
+  'show-meta',
   'select-note',
   'delete-note',
   'edit-note',

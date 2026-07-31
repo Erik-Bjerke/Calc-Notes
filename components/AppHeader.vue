@@ -11,11 +11,10 @@
     <div class="flex items-stretch gap-1.5 px-3 py-1.5">
       <!-- Left: Title + controls stack -->
       <div class="flex flex-col flex-1 min-w-0 gap-0.5">
-        <!-- Top row: Centered title -->
-        <div class="flex items-center gap-1">
+        <!-- Top row: Window controls (Electron only) -->
+        <div v-if="isElectron" class="flex items-center gap-1">
           <!-- Electron window controls -->
           <div
-            v-if="isElectron"
             class="flex items-center gap-1.5 -webkit-app-region-no-drag group/traffic"
             :class="preferences.windowControlPosition === 'right' ? 'order-2 ml-1.5 flex-row-reverse' : 'order-first mr-1.5'"
           >
@@ -44,17 +43,6 @@
               <Icon name="mdi:arrow-expand" class="w-2.5 h-2.5 text-green-900 opacity-0 group-hover/traffic:opacity-100 transition-opacity" />
             </button>
           </div>
-
-          <UiButton
-            variant="ghost"
-            color="gray"
-            class="text-center min-w-0 flex-1 px-1 py-0.5 mb-1 bg-gray-200/50 dark:bg-gray-800/50 rounded-md order-1"
-            @click="$emit('show-meta')"
-          >
-            <h1 class="text-sm font-semibold leading-tight text-gray-900 dark:text-gray-400 truncate">
-              {{ currentNote?.title || 'Numori' }}
-            </h1>
-          </UiButton>
         </div>
 
       <!-- Bottom row: All controls -->
@@ -127,11 +115,11 @@
             <UiAvatar
               v-if="isLoggedIn"
               :src="user?.avatarUrl"
-              size="lg"
+              size="md"
             />
             <UiAvatar
               v-else
-              size="lg"
+              size="md"
               color="gray"
               fallback-icon="mdi:account-circle-outline"
             />
@@ -281,7 +269,6 @@ defineProps({
 const emit = defineEmits([
   'toggle-sidebar',
   'toggle-focus',
-  'show-meta',
   'show-templates',
   'show-help',
   'apply-format',
