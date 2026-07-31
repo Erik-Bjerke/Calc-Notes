@@ -58,7 +58,10 @@ export function createCollabServer(options = {}) {
   } = options
 
   const httpServer = http.createServer((req, res) => {
-    if (req.url === '/health' || req.url === '/') {
+    // Respond OK to any plain HTTP GET so health checks pass regardless of the
+    // path the reverse proxy uses (e.g. same-domain path routing at /collab).
+    // Real collaboration traffic arrives as WebSocket upgrades, handled below.
+    if (req.method === 'GET' || req.method === 'HEAD') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ status: 'ok', service: 'numori-collab' }))
       return
