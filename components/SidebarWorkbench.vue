@@ -36,21 +36,52 @@
       </template>
     </ActivityBar>
 
-    <!-- Panel area (hidden when collapsed to the thin bar) -->
-    <div v-show="panelOpen" class="flex-1 min-w-0 h-full">
-      <MainSidebar
-        v-show="activePanel === 'explorer'"
-        v-bind="$attrs"
-        @select-note="(id) => $emit('select-note', id)"
-      />
-      <MainSidebarSearchPanel
-        v-show="activePanel === 'search'"
-        :active="panelOpen && activePanel === 'search'"
-        :notes="attrs.notes || []"
-        :current-note-id="attrs.currentNoteId || null"
-        @select-note="onSelectNote"
-      />
-    </div>
+    <!-- Panel area — fades/slides on open/close; crossfades between panels.
+         `lg:min-w` keeps the desktop panel from reflowing while it clips shut. -->
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out"
+      enter-from-class="opacity-0 -translate-x-3"
+      enter-to-class="opacity-100 translate-x-0"
+      leave-active-class="transition-all duration-200 ease-in"
+      leave-from-class="opacity-100 translate-x-0"
+      leave-to-class="opacity-0 -translate-x-3"
+    >
+      <div
+        v-show="panelOpen"
+        class="relative flex-1 min-w-0 lg:min-w-[320px] h-full overflow-hidden"
+      >
+        <!-- Explorer layer -->
+        <div
+          class="absolute inset-0 h-full transition-all duration-200 ease-out"
+          :class="
+            activePanel === 'explorer'
+              ? 'opacity-100 translate-x-0'
+              : 'opacity-0 -translate-x-3 pointer-events-none'
+          "
+          :aria-hidden="activePanel !== 'explorer'"
+        >
+          <MainSidebar v-bind="$attrs" @select-note="(id) => $emit('select-note', id)" />
+        </div>
+
+        <!-- Search layer -->
+        <div
+          class="absolute inset-0 h-full transition-all duration-200 ease-out"
+          :class="
+            activePanel === 'search'
+              ? 'opacity-100 translate-x-0'
+              : 'opacity-0 translate-x-3 pointer-events-none'
+          "
+          :aria-hidden="activePanel !== 'search'"
+        >
+          <MainSidebarSearchPanel
+            :active="panelOpen && activePanel === 'search'"
+            :notes="attrs.notes || []"
+            :current-note-id="attrs.currentNoteId || null"
+            @select-note="onSelectNote"
+          />
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
