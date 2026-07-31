@@ -1,0 +1,13 @@
+diff --git a/node_modules/nuxt-codemirror/dist/module.mjs b/node_modules/nuxt-codemirror/dist/module.mjs
+index 49f3dd7..ac01a7c 100644
+--- a/node_modules/nuxt-codemirror/dist/module.mjs
++++ b/node_modules/nuxt-codemirror/dist/module.mjs
+@@ -104,7 +104,7 @@ const module$1 = defineNuxtModule({
+     addImports({
+       name: "useNuxtCodeMirror",
+       as: "useNuxtCodeMirror",
+-      from: resolver.resolve("./runtime/composables/useNuxtCodeMirror.ts")
++      from: resolver.resolve("./runtime/composables/useNuxtCodeMirror.js")
+     });
+     addTypeTemplate({
+       filename: "nuxt-codemirror.d.ts",

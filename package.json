@@ -55,7 +55,7 @@
     "dev:full": "docker compose -f docker-compose.dev.yml up -d && npm run dev:web",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
+    "postinstall": "patch-package && nuxt prepare",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -113,6 +113,7 @@
     "eslint": "^10.8.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
+    "patch-package": "^8.0.1",
     "prettier": "^3.9.6",
     "vitest": "^4.1.10"
   }
