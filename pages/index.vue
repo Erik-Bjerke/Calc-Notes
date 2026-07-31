@@ -124,18 +124,65 @@
         :style="focusMode ? { paddingTop: 'env(safe-area-inset-top, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' } : {}"
       >
         <div class="absolute top-0 left-0 right-0 h-3 z-10 pointer-events-none bg-gradient-to-b from-black/[0.06] to-transparent dark:from-black/[0.25]" />
-        <NoteEditor
-          v-if="currentNote" ref="editorRef"
-          :content="currentNote.content"
-          :note-id="currentNote.id"
-          :show-inline="showInlineResults !== 'off'"
-          :inline-align="showInlineResults === 'off' ? 'left' : showInlineResults"
-          :locale-preferences="localePrefs.preferences"
-          :markdown-mode="markdownMode"
-          :shortcut-handlers="shortcutHandlers"
-          :placeholder="'Start typing... Try: 10 + 20, or use # for headers, // for comments'"
-          @update:content="updateContent"
-        />
+        <template v-if="currentNote">
+          <!-- Read-only notice for archived / binned notes -->
+          <div
+            v-if="currentNoteReadOnly"
+            class="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b text-sm"
+            :class="
+              currentNote.deletedAt
+                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300'
+                : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300'
+            "
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <Icon
+                :name="currentNote.deletedAt ? 'mdi:delete-outline' : 'mdi:archive-outline'"
+                class="w-4 h-4 flex-shrink-0"
+              />
+              <span class="truncate">
+                {{
+                  currentNote.deletedAt
+                    ? 'This note is in the bin. Restore it to make changes.'
+                    : 'This note is archived. Unarchive it to make changes.'
+                }}
+              </span>
+            </div>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :color="currentNote.deletedAt ? 'red' : 'gray'"
+              class="flex-shrink-0"
+              @click="
+                currentNote.deletedAt
+                  ? handleRestoreNote(currentNote.id)
+                  : handleUnarchiveNote(currentNote.id)
+              "
+            >
+              <Icon
+                :name="currentNote.deletedAt ? 'mdi:restore' : 'mdi:package-up'"
+                class="w-4 h-4"
+              />
+              {{ currentNote.deletedAt ? 'Restore' : 'Unarchive' }}
+            </UiButton>
+          </div>
+
+          <div class="flex-1 min-h-0 relative">
+            <NoteEditor
+              ref="editorRef"
+              :content="currentNote.content"
+              :note-id="currentNote.id"
+              :editable="!currentNoteReadOnly"
+              :show-inline="showInlineResults !== 'off'"
+              :inline-align="showInlineResults === 'off' ? 'left' : showInlineResults"
+              :locale-preferences="localePrefs.preferences"
+              :markdown-mode="markdownMode"
+              :shortcut-handlers="shortcutHandlers"
+              :placeholder="'Start typing... Try: 10 + 20, or use # for headers, // for comments'"
+              @update:content="updateContent"
+            />
+          </div>
+        </template>
         <div v-else class="flex items-center justify-center h-full px-6">
           <div class="text-center max-w-sm space-y-6">
             <div class="mx-auto w-16 h-16 rounded-2xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center">
@@ -162,7 +209,7 @@
     </div>
 
     <div
-      v-if="currentNote && !isNativeApp"
+      v-if="currentNote && !isNativeApp && !currentNoteReadOnly"
       class="lg:hidden fixed left-0 right-0 z-10 transition-[bottom] duration-150 ease-out px-1.5 pb-1.5"
       :style="{ bottom: mobileKeyboardOffset + 'px' }"
     >
@@ -670,8 +717,16 @@ const revealNoteInTree = (id) => {
 
 const openEditModal = (id) => { currentNoteId.value = id; showMetaModal.value = true }
 
+// Archived and binned notes are read-only — the user must unarchive/restore first.
+const currentNoteReadOnly = computed(() => {
+  const n = currentNote.value
+  return !!n && (n.archived || !!n.deletedAt)
+})
+
 const updateContent = (content) => {
-  if (currentNote.value) { updateNoteContent(currentNote.value.id, content); debouncedSync(currentNote.value.id) }
+  if (!currentNote.value || currentNoteReadOnly.value) return
+  updateNoteContent(currentNote.value.id, content)
+  debouncedSync(currentNote.value.id)
 }
 
 const updateMeta = ({ title, description, tags, internalName }) => {
@@ -711,10 +766,13 @@ const handleDeleteConfirm = ({ skipBin } = {}) => {
   }
 }
 
-const applyFormat = (before, after) => { if (editorRef.value) editorRef.value.wrapSelection(before, after) }
+const applyFormat = (before, after) => {
+  if (currentNoteReadOnly.value) return
+  if (editorRef.value) editorRef.value.wrapSelection(before, after)
+}
 
 const insertTemplate = (templateContent) => {
-  if (currentNote.value && editorRef.value) {
+  if (currentNote.value && !currentNoteReadOnly.value && editorRef.value) {
     let content = currentNote.value.content
     if (content && !content.endsWith('\n')) content += '\n\n'
     content += templateContent

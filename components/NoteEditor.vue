@@ -619,6 +619,7 @@ const reformatDisplay = () => {
 
 // --- Expose methods for toolbar actions ---
 const insertText = (text) => {
+  if (!props.editable) return
   if (!editorView) {
     const newContent = localContent.value + text
     localContent.value = newContent
@@ -631,6 +632,7 @@ const insertText = (text) => {
 }
 
 const wrapSelection = (before, after = before) => {
+  if (!props.editable) return
   if (!editorView) {
     const newContent = localContent.value + before + after
     localContent.value = newContent
@@ -655,7 +657,7 @@ const wrapSelection = (before, after = before) => {
 }
 
 const indentLine = () => {
-  if (!editorView) return
+  if (!props.editable || !editorView) return
   const line = editorView.state.doc.lineAt(editorView.state.selection.main.head)
   editorView.dispatch({
     changes: { from: line.from, insert: '  ' },
@@ -665,7 +667,7 @@ const indentLine = () => {
 }
 
 const outdentLine = () => {
-  if (!editorView) return
+  if (!props.editable || !editorView) return
   const line = editorView.state.doc.lineAt(editorView.state.selection.main.head)
   const text = line.text
   if (text.startsWith('  ')) {
@@ -685,8 +687,8 @@ const outdentLine = () => {
 defineExpose({
   insertText, wrapSelection, indentLine, outdentLine,
   canUndo, canRedo, linkPopup, closeLinkPopup, openLink, copyLinkUrl, copyLinkName,
-  undo: () => { if (editorView) { cmUndo(editorView); updateUndoRedoState(); editorView.focus() } },
-  redo: () => { if (editorView) { cmRedo(editorView); updateUndoRedoState(); editorView.focus() } },
+  undo: () => { if (props.editable && editorView) { cmUndo(editorView); updateUndoRedoState(); editorView.focus() } },
+  redo: () => { if (props.editable && editorView) { cmRedo(editorView); updateUndoRedoState(); editorView.focus() } },
   blur: () => { if (editorView) editorView.contentDOM.blur() },
 })
 </script>

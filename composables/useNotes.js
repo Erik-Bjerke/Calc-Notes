@@ -319,7 +319,8 @@ Discounted: prev - 10%
 
   const updateNoteContent = (id, content) => {
     const note = notes.value.find((n) => n.id === id)
-    if (note) {
+    // Archived / binned notes are read-only — ignore content writes.
+    if (note && !note.archived && !note.deletedAt) {
       note.content = content
       note.updatedAt = new Date().toISOString()
       saveNotes()
