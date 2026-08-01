@@ -108,7 +108,7 @@
               </UiButton>
             </div>
             <p v-if="modeSwitched" class="text-xs text-green-600 dark:text-green-400">
-              <Icon name="mdi:check" class="w-3 h-3 inline" /> Mode changed. Reopen the note to apply.
+              <Icon name="mdi:check" class="w-3 h-3 inline" /> Mode changed.
             </p>
           </div>
 
@@ -284,6 +284,73 @@
           </span>
         </label>
 
+        <!-- Access model + invites (collaborative, signed-in owner) -->
+        <template v-if="shareMode === 'collaborative' && isLoggedIn">
+          <div class="space-y-1">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+              Who can access
+            </label>
+            <div class="flex gap-2">
+              <UiButton
+                variant="outline"
+                size="xs"
+                class="flex-1"
+                :class="preAccessBtnClass('public')"
+                @click="preAccess = 'public'"
+              >
+                <Icon name="mdi:link-variant" class="w-3 h-3 inline" /> Anyone with link
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="xs"
+                class="flex-1"
+                :class="preAccessBtnClass('private')"
+                @click="preAccess = 'private'"
+              >
+                <Icon name="mdi:account-lock-outline" class="w-3 h-3 inline" /> Specific people
+              </UiButton>
+            </div>
+          </div>
+
+          <!-- Invite accounts (queued, applied when the note is shared) -->
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+              Invite people
+            </label>
+            <UiAlert v-if="inviteError" color="red">{{ inviteError }}</UiAlert>
+            <ul v-if="pendingInvites.length" class="space-y-1">
+              <li
+                v-for="email in pendingInvites"
+                :key="email"
+                class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-400"
+              >
+                <Icon name="mdi:account-outline" class="w-4 h-4 flex-shrink-0" />
+                <span class="flex-1 truncate">{{ email }}</span>
+                <UiButton
+                  icon-only
+                  variant="ghost"
+                  color="red"
+                  size="xs"
+                  @click="removePendingInvite(email)"
+                >
+                  <Icon name="mdi:close" class="w-4 h-4 block" />
+                </UiButton>
+              </li>
+            </ul>
+            <div class="flex gap-2">
+              <UiInput
+                v-model="preInviteEmail"
+                type="email"
+                placeholder="Add by account email"
+                :validate="false"
+                class="flex-1"
+                @keyup.enter="addPendingInvite"
+              />
+              <UiButton size="sm" :disabled="!preInviteEmail" @click="addPendingInvite">Add</UiButton>
+            </div>
+          </div>
+        </template>
+
         <!-- Anonymous toggle -->
         <label class="flex items-center gap-2 cursor-pointer">
           <UiCheckbox v-model="anonymous" />
@@ -374,8 +441,9 @@
           </UiFormField>
         </div>
 
-        <!-- Expiration -->
-        <UiFormField label="Expires after">
+        <!-- Expiration — read-only shares always expire (1–30 days); a
+             collaborative note stays shared until stopped unless you opt in. -->
+        <UiFormField v-if="shareMode === 'read-only'" label="Expires after">
           <UiSelect
             v-model="expiresInDays"
             :options="[
@@ -386,6 +454,26 @@
             ]"
           />
         </UiFormField>
+        <div v-else class="space-y-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <UiCheckbox v-model="preExpires" />
+            <span class="text-sm text-gray-700 dark:text-gray-400">Set an expiry</span>
+          </label>
+          <UiSelect
+            v-if="preExpires"
+            v-model="preExpiresDays"
+            :options="[
+              { value: 1, label: '1 day' },
+              { value: 7, label: '7 days' },
+              { value: 14, label: '14 days' },
+              { value: 30, label: '30 days' },
+              { value: 90, label: '90 days' },
+            ]"
+          />
+          <p v-else class="text-xs text-gray-400 dark:text-gray-600">
+            Stays shared until you stop it.
+          </p>
+        </div>
 
         <!-- Analytics toggle with tooltip -->
         <div class="relative">
@@ -448,7 +536,7 @@ const props = defineProps({
   existingHash: { type: String, default: null },
 })
 
-const emit = defineEmits(['close', 'unshare', 'open-analytics'])
+const emit = defineEmits(['close', 'unshare', 'open-analytics', 'collab-changed'])
 
 const { copy: clipboardCopy } = useClipboard()
 const { apiFetch, apiUrl } = useApi()
@@ -464,6 +552,13 @@ const collectAnalytics = ref(false)
 // (real-time co-editing via an Automerge document the sync service can read).
 const shareMode = ref('read-only')
 const allowGuests = ref(true)
+// Pre-share collaborative options (configurable BEFORE the share is created).
+const preAccess = ref('public')
+const preExpires = ref(false) // collaborative: no expiry by default
+const preExpiresDays = ref(30)
+const pendingInvites = ref([])
+const preInviteEmail = ref('')
+const inviteError = ref(null)
 const sharing = ref(false)
 const error = ref(null)
 const newShareHash = ref(null)
@@ -529,9 +624,37 @@ watch(
       usedSharePassword.value = false
       shareMode.value = 'read-only'
       allowGuests.value = true
+      preAccess.value = 'public'
+      preExpires.value = false
+      preExpiresDays.value = 30
+      pendingInvites.value = []
+      preInviteEmail.value = ''
+      inviteError.value = null
     }
   },
 )
+
+const preAccessBtnClass = (val) =>
+  preAccess.value === val
+    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+
+/** Queue an email to invite once the collaborative share is created. */
+const addPendingInvite = () => {
+  const email = preInviteEmail.value.trim().toLowerCase()
+  inviteError.value = null
+  if (!email) return
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    inviteError.value = 'Enter a valid email address'
+    return
+  }
+  if (!pendingInvites.value.includes(email)) pendingInvites.value.push(email)
+  preInviteEmail.value = ''
+}
+
+const removePendingInvite = (email) => {
+  pendingInvites.value = pendingInvites.value.filter((e) => e !== email)
+}
 
 const handleShare = async () => {
   if (!props.note) return
@@ -646,11 +769,13 @@ const handleShareCollaborative = async () => {
       content: props.note.content,
       encrypted: false,
       anonymous: anonymous.value,
-      expiresInDays: expiresInDays.value,
+      // Collaborative notes don't expire unless the owner opts in.
+      expiresInDays: preExpires.value ? preExpiresDays.value : null,
       collectAnalytics: collectAnalytics.value,
       sourceClientId: props.note.id,
       mode: 'collaborative',
       allowGuests: allowGuests.value,
+      access: props.isLoggedIn ? preAccess.value : 'public',
       automergeUrl,
     }
     if (!props.isLoggedIn && !anonymous.value) {
@@ -660,6 +785,24 @@ const handleShareCollaborative = async () => {
 
     const data = await apiFetch('/api/share', { method: 'POST', headers: props.authHeaders, body })
     newShareHash.value = data.hash
+
+    // Apply any queued invites now that the share exists (owner only).
+    if (props.isLoggedIn && pendingInvites.value.length) {
+      for (const email of pendingInvites.value) {
+        try {
+          await apiFetch(`/api/share/${data.hash}/members`, {
+            method: 'POST',
+            headers: props.authHeaders,
+            body: { email, role: 'editor' },
+          })
+        } catch {
+          /* skip an individual invite that fails (e.g. no such account) */
+        }
+      }
+      // Reflect them in the post-share settings panel.
+      manageAccess.value = preAccess.value
+      loadMembers()
+    }
 
     // Remember the note ↔ collaborative document mapping so the main editor can
     // bind to the live CRDT (see Task 10 reconciliation).
@@ -683,6 +826,10 @@ const handleShareCollaborative = async () => {
         /* network attach best-effort; offline edits sync on reconnect */
       }
     }
+
+    // Tell the page the note just became collaborative so the open editor binds
+    // to the live document immediately (no need to switch notes and back).
+    emit('collab-changed')
 
     if (data.deleteToken) {
       try {
@@ -913,6 +1060,7 @@ const switchMode = async (target) => {
 
     manageMode.value = target
     modeSwitched.value = true
+    emit('collab-changed')
   } catch (err) {
     settingsError.value = err.data?.statusMessage || err.message || 'Failed to switch mode'
   } finally {

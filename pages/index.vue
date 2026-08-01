@@ -320,8 +320,8 @@
       :user-name="auth.user.value?.name || ''" :user-email="auth.user.value?.email || ''"
       :auth-headers="auth.authHeaders.value"
       :existing-hash="currentNote ? shareManagement.sharedNotesMap.value.get(currentNote.id) || null : null"
-      @close="shareManagement.handleShareModalClose" @unshare="shareManagement.handleShareModalUnshare"
-      @open-analytics="shareManagement.handleOpenAnalytics"
+      @close="shareManagement.handleShareModalClose" @unshare="onShareModalUnshare"
+      @open-analytics="shareManagement.handleOpenAnalytics" @collab-changed="refreshCollab"
     />
 
     <ShareAnalyticsModal :is-open="shareManagement.showAnalyticsModal.value" :hash="shareManagement.analyticsHash.value" :auth-headers="auth.authHeaders.value" @close="shareManagement.showAnalyticsModal.value = false" />
@@ -391,7 +391,7 @@ const welcomeWizard = useWelcomeWizard()
 // shared for real-time editing (owner side). collabHandle is null for normal
 // notes, in which case the editor behaves exactly as before.
 const auth = useAuth()
-const { collabHandle, collabRole } = useCollabNote(currentNote, auth)
+const { collabHandle, collabRole, refresh: refreshCollab } = useCollabNote(currentNote, auth)
 // A collaborative viewer edits read-only (a read-only editor emits no changes,
 // so nothing propagates upstream — the reliable client-side half of read-only
 // enforcement; the server also scopes their token to 'read').
@@ -446,7 +446,24 @@ const authHandlers = useAuthHandlers({
 })
 
 // --- Composable: Share management ---
-const shareManagement = useShareManagement({ auth, notes, apiFetch })
+// After a note stops being shared: if it's the open note, re-evaluate its
+// collaborative binding (drops the CRDT link + "not encrypted" banner), and
+// re-sync so the cleared collab linkage propagates to the account/other devices.
+const afterUnshare = (noteId) => {
+  if (!noteId) return
+  if (currentNoteId.value === noteId) refreshCollab()
+  syncNow(noteId)
+}
+
+const shareManagement = useShareManagement({ auth, notes, apiFetch, onUnshared: afterUnshare })
+
+// The share modal unshares internally (and clears its own collabDocs mapping);
+// mirror the local cleanup for the currently open note.
+const onShareModalUnshare = () => {
+  const id = currentNoteId.value
+  shareManagement.handleShareModalUnshare()
+  afterUnshare(id)
+}
 
 // --- Bin enabled preference ---
 const binEnabled = computed(() => localePrefs.preferences.binEnabled !== false)

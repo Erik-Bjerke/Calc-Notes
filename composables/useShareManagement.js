@@ -3,7 +3,7 @@ import db from '~/db.js'
 /**
  * Manages shared note state and share/unshare actions.
  */
-export function useShareManagement({ auth, notes, apiFetch }) {
+export function useShareManagement({ auth, notes, apiFetch, onUnshared }) {
   const sharedNoteIds = ref([])
   const sharedNotesMap = ref(new Map())
   const analyticsNotesMap = ref(new Map())
@@ -96,12 +96,23 @@ export function useShareManagement({ auth, notes, apiFetch }) {
         headers: auth.authHeaders.value,
       })
 
-      // Clean up stored delete token
+      // Clean up the stored delete token AND the local collaborative mapping,
+      // so the note stops being treated as collaborative (no live sync, no
+      // "not encrypted" banner) and becomes fully private again.
       try {
         await db.shareTokens.delete(hash)
       } catch {
         /* db unavailable */
       }
+      try {
+        await db.collabDocs.delete(noteId)
+        await db.collabDocs.where('hash').equals(hash).delete()
+      } catch {
+        /* db unavailable */
+      }
+
+      // Let the page react (unbind the open editor, clear the synced linkage).
+      if (onUnshared) onUnshared(noteId)
 
       await loadSharedNotes()
     } catch {

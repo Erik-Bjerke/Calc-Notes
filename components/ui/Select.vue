@@ -45,20 +45,23 @@
       />
     </button>
 
-    <!-- Dropdown panel: animated scale transition -->
-    <Transition
-      enter-active-class="transition duration-100 ease-out"
-      enter-from-class="opacity-0 scale-95"
-      enter-to-class="opacity-100 scale-100"
-      leave-active-class="transition duration-75 ease-in"
-      leave-from-class="opacity-100 scale-100"
-      leave-to-class="opacity-0 scale-95"
-    >
-      <div
-        v-show="isOpen"
-        class="absolute z-50 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden"
-        :class="[dropUp ? 'bottom-full mb-1 mt-0' : '', block ? 'w-full' : 'min-w-full right-0']"
+    <!-- Dropdown panel: teleported to <body> and fixed-positioned so it is never
+         clipped by an ancestor with overflow (e.g. a scrollable modal body). -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-100 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-75 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
       >
+        <div
+          v-show="isOpen"
+          ref="panelRef"
+          class="fixed z-[60] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden"
+          :style="panelStyle"
+        >
         <!-- Search input for filtering options -->
         <div v-if="searchable" class="p-1.5">
           <input
@@ -121,8 +124,9 @@
             </template>
           </template>
         </ul>
-      </div>
-    </Transition>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -241,10 +245,36 @@ const containerRef = ref(null)
 const triggerRef = ref(null)
 const searchRef = ref(null)
 const sizerRef = ref(null)
+const panelRef = ref(null)
 const isOpen = ref(false)
 const searchQuery = ref('')
-const dropUp = ref(false)
 const measuredWidth = ref(0)
+const panelStyle = ref({})
+
+// Position the teleported panel under (or above) the trigger using fixed
+// coordinates so it overlays everything and is never clipped by a scrollable
+// ancestor. Re-run on scroll/resize while open so it stays anchored.
+const reposition = () => {
+  const el = triggerRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const spaceBelow = window.innerHeight - rect.bottom
+  const openUp = spaceBelow < 260 && rect.top > spaceBelow
+  const style = { left: `${rect.left}px`, minWidth: `${rect.width}px` }
+  if (props.block) style.width = `${rect.width}px`
+  if (openUp) style.bottom = `${window.innerHeight - rect.top + 4}px`
+  else style.top = `${rect.bottom + 4}px`
+  panelStyle.value = style
+}
+
+const startTracking = () => {
+  window.addEventListener('scroll', reposition, true)
+  window.addEventListener('resize', reposition)
+}
+const stopTracking = () => {
+  window.removeEventListener('scroll', reposition, true)
+  window.removeEventListener('resize', reposition)
+}
 
 // Text class for the hidden sizer — must match the trigger's font size
 const sizerTextClass = computed(() => {
@@ -349,13 +379,14 @@ const toggleOpen = () => {
   isOpen.value = !isOpen.value
   if (isOpen.value) {
     searchQuery.value = ''
+    reposition()
+    startTracking()
     nextTick(() => {
-      if (containerRef.value) {
-        const rect = containerRef.value.getBoundingClientRect()
-        dropUp.value = rect.bottom + 220 > window.innerHeight
-      }
+      reposition()
       if (props.searchable) searchRef.value?.focus()
     })
+  } else {
+    stopTracking()
   }
 }
 
@@ -374,6 +405,7 @@ const selectFirst = () => {
 const close = () => {
   isOpen.value = false
   searchQuery.value = ''
+  stopTracking()
 }
 
 // Programmatic toggle for parent row clicks.
@@ -394,12 +426,18 @@ const closeFromOutside = () => {
 }
 
 const onDocumentClick = (e) => {
-  if (!containerRef.value || containerRef.value.contains(e.target)) return
+  // The panel is teleported to <body>, so clicks inside it are NOT inside the
+  // container — check both before treating a click as "outside".
+  if (containerRef.value?.contains(e.target)) return
+  if (panelRef.value?.contains(e.target)) return
   closeFromOutside()
 }
 
 onMounted(() => document.addEventListener('click', onDocumentClick, true))
-onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick, true))
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocumentClick, true)
+  stopTracking()
+})
 
 defineExpose({ toggle, close, isOpen })
 </script>
