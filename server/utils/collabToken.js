@@ -10,9 +10,11 @@
  *
  * Payload:
  *   documentId  the Automerge documentId this token grants access to (room)
- *   access      'write' (collaborative) — reserved for future 'read'
+ *   access      'write' (editor) | 'read' (viewer, read-only relay)
  *   kind        'user' | 'guest'
  *   name        display name used for presence/cursors
+ *   userId      account id (accounts only) — used for targeted revocation
+ *   sid         random guest session id (guests only) — used for targeted kick
  *   purpose     always 'collab' (guards against token confusion)
  */
 import { signJwt, verifyJwt } from './auth.js'
@@ -28,13 +30,17 @@ export function toDocumentId(automergeUrl) {
 }
 
 export async function signCollabToken(
-  { documentId, access = 'write', kind = 'user', name = '' },
+  { documentId, access = 'write', kind = 'user', name = '', userId = null, sid = null },
   ttlSeconds = DEFAULT_TTL_SECONDS,
 ) {
   const secret = process.env.JWT_SECRET
   if (!secret) throw new Error('JWT_SECRET is not configured')
   if (!documentId) throw new Error('documentId is required')
-  return signJwt({ documentId, access, kind, name, purpose: 'collab' }, secret, ttlSeconds)
+  return signJwt(
+    { documentId, access, kind, name, userId, sid, purpose: 'collab' },
+    secret,
+    ttlSeconds,
+  )
 }
 
 export async function verifyCollabToken(token) {

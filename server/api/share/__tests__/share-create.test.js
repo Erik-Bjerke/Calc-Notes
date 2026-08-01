@@ -10,6 +10,10 @@ vi.mock('../../../utils/db.js', () => ({ query: (...args) => mockQuery(...args) 
 vi.mock('../../../utils/auth.js', () => ({
   optionalAuth: (...args) => mockOptionalAuth(...args),
 }))
+vi.mock('../../../utils/collabToken.js', () => ({
+  signCollabToken: vi.fn(async () => 'fake.jwt.token'),
+  toDocumentId: (url) => String(url).replace(/^automerge:/, ''),
+}))
 
 globalThis.defineEventHandler = (handler) => handler
 globalThis.readBody = vi.fn()
@@ -138,5 +142,52 @@ describe('POST /api/share', () => {
     const diffDays = (expiresAt - now) / 86400000
     expect(diffDays).toBeGreaterThan(29)
     expect(diffDays).toBeLessThanOrEqual(31)
+  })
+
+  it('defaults access to public and stores it', async () => {
+    readBody.mockResolvedValue({ title: 'Test', content: 'c' })
+
+    const result = await handler({})
+
+    expect(result.access).toBe('public')
+    expect(findInsertCall()[1][16]).toBe('public') // access column
+  })
+
+  it('stores private access when requested', async () => {
+    readBody.mockResolvedValue({ title: 'Test', content: 'c', access: 'private' })
+
+    const result = await handler({})
+
+    expect(result.access).toBe('private')
+    expect(findInsertCall()[1][16]).toBe('private')
+  })
+
+  it('collaborative shares do not expire by default (expires_at null)', async () => {
+    readBody.mockResolvedValue({
+      title: 'Test',
+      content: 'c',
+      mode: 'collaborative',
+      automergeUrl: 'automerge:abc',
+    })
+
+    await handler({})
+
+    expect(findInsertCall()[1][9]).toBeNull() // expires_at
+  })
+
+  it('collaborative shares honour an owner-set expiry beyond 30 days', async () => {
+    readBody.mockResolvedValue({
+      title: 'Test',
+      content: 'c',
+      mode: 'collaborative',
+      automergeUrl: 'automerge:abc',
+      expiresInDays: 90,
+    })
+
+    await handler({})
+
+    const diffDays = (new Date(findInsertCall()[1][9]) - new Date()) / 86400000
+    expect(diffDays).toBeGreaterThan(89)
+    expect(diffDays).toBeLessThanOrEqual(91)
   })
 })

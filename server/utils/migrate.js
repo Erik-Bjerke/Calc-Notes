@@ -273,6 +273,41 @@ export async function migrate() {
     END $do$
   `)
 
+  // Access model for a share: 'public' (anyone with the link, per allow_guests)
+  // or 'private' (only owner-allowlisted accounts — see share_members). Applies
+  // mainly to collaborative shares; read-only shares are public snapshots.
+  await query(`
+    DO $do$ BEGIN
+      ALTER TABLE shared_notes ADD COLUMN IF NOT EXISTS access TEXT NOT NULL DEFAULT 'public';
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $do$
+  `)
+
+  // Membership/allowlist for collaborative shares. For a 'private' share only
+  // 'active' members may join; for 'public' shares a member row is created for
+  // each signed-in participant so the owner can see and revoke them.
+  //   role   — 'editor' (write) | 'viewer' (read-only)
+  //   status — 'active' | 'revoked' (revoked blocks re-entry to private shares)
+  await query(`
+    CREATE TABLE IF NOT EXISTS share_members (
+      id             SERIAL PRIMARY KEY,
+      shared_note_id INTEGER NOT NULL REFERENCES shared_notes(id) ON DELETE CASCADE,
+      user_id        INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      email          TEXT,
+      role           TEXT NOT NULL DEFAULT 'editor',
+      status         TEXT NOT NULL DEFAULT 'active',
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `)
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_share_members_shared_note_id ON share_members(shared_note_id)
+  `)
+  await query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_share_members_note_user
+    ON share_members(shared_note_id, user_id) WHERE user_id IS NOT NULL
+  `)
+
   // Track whether the welcome note has been created for this user
   await query(`
     DO $do$ BEGIN

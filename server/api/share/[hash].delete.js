@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { optionalAuth } from '../../utils/auth.js'
 import { query } from '../../utils/db.js'
+import { notifyCollabRevoke } from '../../utils/collabRevoke.js'
 
 /**
  * DELETE /api/share/:hash — Stop sharing or permanently remove a shared note.
@@ -42,7 +43,7 @@ export default defineEventHandler(async (event) => {
   if (purge === 'true') {
     // Hard-delete: removes shared note + analytics (via CASCADE)
     const result = await query(
-      `DELETE FROM shared_notes WHERE hash = $1 AND ${ownerCondition} RETURNING id`,
+      `DELETE FROM shared_notes WHERE hash = $1 AND ${ownerCondition} RETURNING id, automerge_url`,
       ownerParams,
     )
     if (result.rows.length === 0) {
@@ -51,12 +52,14 @@ export default defineEventHandler(async (event) => {
         statusMessage: 'Shared note not found or not owned by you',
       })
     }
+    // Boot everyone from the room — the share no longer exists.
+    await notifyCollabRevoke({ automergeUrl: result.rows[0].automerge_url })
     return { deleted: true, purged: true }
   }
 
   // Soft-delete: stop sharing but keep analytics
   const result = await query(
-    `UPDATE shared_notes SET deleted_at = NOW() WHERE hash = $1 AND ${ownerCondition} AND deleted_at IS NULL RETURNING id`,
+    `UPDATE shared_notes SET deleted_at = NOW() WHERE hash = $1 AND ${ownerCondition} AND deleted_at IS NULL RETURNING id, automerge_url`,
     ownerParams,
   )
 
@@ -67,5 +70,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Boot everyone — sharing has stopped.
+  await notifyCollabRevoke({ automergeUrl: result.rows[0].automerge_url })
   return { deleted: true }
 })

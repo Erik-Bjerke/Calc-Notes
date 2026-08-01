@@ -48,6 +48,172 @@
           View analytics
         </UiButton>
 
+        <!-- Owner settings — change lifecycle after sharing -->
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-3">
+          <p class="text-sm font-medium text-gray-700 dark:text-gray-400">Sharing settings</p>
+
+          <UiAlert v-if="settingsError" color="red">{{ settingsError }}</UiAlert>
+
+          <!-- Expiry: off by default for collaborative; owner opts in -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <UiCheckbox v-model="manageExpires" />
+            <span class="text-sm text-gray-700 dark:text-gray-400">Set an expiry</span>
+          </label>
+          <UiSelect
+            v-if="manageExpires"
+            v-model="manageExpiresDays"
+            :options="[
+              { value: 1, label: '1 day' },
+              { value: 7, label: '7 days' },
+              { value: 14, label: '14 days' },
+              { value: 30, label: '30 days' },
+              { value: 90, label: '90 days' },
+            ]"
+          />
+          <p v-else class="text-xs text-gray-400 dark:text-gray-600">
+            This note stays shared until you stop it.
+          </p>
+
+          <!-- Mode switch (owner) -->
+          <div class="space-y-1">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Mode</label>
+            <div class="flex gap-2">
+              <UiButton
+                variant="outline"
+                size="xs"
+                class="flex-1"
+                :loading="switchingMode === 'read-only'"
+                :class="
+                  manageMode === 'read-only'
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                "
+                @click="switchMode('read-only')"
+              >
+                <Icon name="mdi:eye-outline" class="w-3 h-3 inline" /> Read-only
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="xs"
+                class="flex-1"
+                :loading="switchingMode === 'collaborative'"
+                :class="
+                  manageMode === 'collaborative'
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                "
+                @click="switchMode('collaborative')"
+              >
+                <Icon name="mdi:account-group-outline" class="w-3 h-3 inline" /> Collaborative
+              </UiButton>
+            </div>
+            <p v-if="modeSwitched" class="text-xs text-green-600 dark:text-green-400">
+              <Icon name="mdi:check" class="w-3 h-3 inline" /> Mode changed. Reopen the note to apply.
+            </p>
+          </div>
+
+          <!-- Allow guests (collaborative only) -->
+          <label
+            v-if="manageMode === 'collaborative'"
+            class="flex items-center gap-2 cursor-pointer"
+          >
+            <UiCheckbox v-model="manageAllowGuests" />
+            <span class="text-sm text-gray-700 dark:text-gray-400">
+              Allow guests without an account
+            </span>
+          </label>
+
+          <!-- Access model (collaborative, signed-in owner) -->
+          <template v-if="manageMode === 'collaborative' && isLoggedIn">
+            <div class="space-y-1">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+                Who can access
+              </label>
+              <div class="flex gap-2">
+                <UiButton
+                  variant="outline"
+                  size="xs"
+                  class="flex-1"
+                  :class="accessBtnClass('public')"
+                  @click="manageAccess = 'public'"
+                >
+                  <Icon name="mdi:link-variant" class="w-3 h-3 inline" /> Anyone with link
+                </UiButton>
+                <UiButton
+                  variant="outline"
+                  size="xs"
+                  class="flex-1"
+                  :class="accessBtnClass('private')"
+                  @click="manageAccess = 'private'"
+                >
+                  <Icon name="mdi:account-lock-outline" class="w-3 h-3 inline" /> Specific people
+                </UiButton>
+              </div>
+            </div>
+
+            <!-- Participants -->
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+                People with access
+              </label>
+              <UiAlert v-if="memberError" color="red">{{ memberError }}</UiAlert>
+              <ul v-if="members.length" class="space-y-1">
+                <li v-for="m in members" :key="m.id" class="flex items-center gap-2 text-sm">
+                  <span
+                    class="flex-1 truncate"
+                    :class="
+                      m.status === 'revoked'
+                        ? 'line-through text-gray-400 dark:text-gray-600'
+                        : 'text-gray-700 dark:text-gray-400'
+                    "
+                  >
+                    {{ m.name || m.email }}
+                  </span>
+                  <UiSelect
+                    :model-value="m.role"
+                    class="w-24"
+                    :options="[
+                      { value: 'editor', label: 'Editor' },
+                      { value: 'viewer', label: 'Viewer' },
+                    ]"
+                    @update:model-value="(r) => setMemberRole(m, r)"
+                  />
+                  <UiButton icon-only variant="ghost" color="red" size="xs" @click="kickMember(m)">
+                    <Icon name="mdi:close" class="w-4 h-4 block" />
+                  </UiButton>
+                </li>
+              </ul>
+              <p v-else class="text-xs text-gray-400 dark:text-gray-600">No one added yet.</p>
+
+              <div class="flex gap-2">
+                <UiInput
+                  v-model="newMemberEmail"
+                  type="email"
+                  placeholder="Add by account email"
+                  :validate="false"
+                  class="flex-1"
+                />
+                <UiButton
+                  size="sm"
+                  :loading="addingMember"
+                  :disabled="!newMemberEmail"
+                  @click="addMember"
+                >
+                  Add
+                </UiButton>
+              </div>
+            </div>
+          </template>
+
+          <UiButton size="sm" variant="outline" block :loading="savingSettings" @click="saveSettings">
+            <Icon name="mdi:content-save-outline" class="w-4 h-4" />
+            Save settings
+          </UiButton>
+          <p v-if="settingsSaved" class="text-xs text-green-600 dark:text-green-400">
+            <Icon name="mdi:check" class="w-3 h-3 inline" /> Settings updated.
+          </p>
+        </div>
+
         <div class="flex gap-2">
           <UiButton variant="solid" color="gray" class="flex-1" @click="$emit('close')">
             Done
@@ -309,6 +475,29 @@ const sharePassword = ref('')
 const passwordHint = ref('')
 const usedSharePassword = ref(false)
 
+// ── Owner settings (manage an existing share's lifecycle) ────────────────
+const manageMode = ref('read-only')
+const manageAllowGuests = ref(true)
+const manageAccess = ref('public')
+const manageExpires = ref(false)
+const manageExpiresDays = ref(30)
+const savingSettings = ref(false)
+const settingsError = ref(null)
+const settingsSaved = ref(false)
+const switchingMode = ref(null)
+const modeSwitched = ref(false)
+
+// Participants (collaborative shares)
+const members = ref([])
+const memberError = ref(null)
+const newMemberEmail = ref('')
+const addingMember = ref(false)
+
+const accessBtnClass = (val) =>
+  manageAccess.value === val
+    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+
 const activeHash = computed(() => newShareHash.value || props.existingHash)
 
 const activeShareUrl = computed(() => {
@@ -558,4 +747,182 @@ const copyLink = async () => {
     copied.value = false
   }, 2000)
 }
+
+/** Load the current settings of the active share to populate the panel. */
+const loadSettings = async () => {
+  const hash = activeHash.value
+  if (!hash) return
+  try {
+    const data = await apiFetch(`/api/share/${hash}`, { headers: props.authHeaders })
+    manageMode.value = data.mode || 'read-only'
+    manageAllowGuests.value = data.allowGuests === true
+    manageAccess.value = data.access === 'private' ? 'private' : 'public'
+    manageExpires.value = !!data.expiresAt
+    if (manageMode.value === 'collaborative' && props.isLoggedIn) loadMembers()
+  } catch {
+    /* leave defaults on failure */
+  }
+}
+
+/** Load the share's participant list (owner, collaborative shares). */
+const loadMembers = async () => {
+  const hash = activeHash.value
+  if (!hash || !props.isLoggedIn) return
+  try {
+    members.value = await apiFetch(`/api/share/${hash}/members`, { headers: props.authHeaders })
+  } catch {
+    members.value = []
+  }
+}
+
+/** Add (or re-add) an account to the allowlist by email. */
+const addMember = async () => {
+  const hash = activeHash.value
+  if (!hash || !newMemberEmail.value) return
+  addingMember.value = true
+  memberError.value = null
+  try {
+    await apiFetch(`/api/share/${hash}/members`, {
+      method: 'POST',
+      headers: props.authHeaders,
+      body: { email: newMemberEmail.value, role: 'editor' },
+    })
+    newMemberEmail.value = ''
+    await loadMembers()
+  } catch (err) {
+    memberError.value = err.data?.statusMessage || err.message || 'Failed to add member'
+  } finally {
+    addingMember.value = false
+  }
+}
+
+/** Change a member's role (re-uses the upsert POST by email). */
+const setMemberRole = async (member, role) => {
+  const hash = activeHash.value
+  if (!hash || !member.email || role === member.role) return
+  memberError.value = null
+  try {
+    await apiFetch(`/api/share/${hash}/members`, {
+      method: 'POST',
+      headers: props.authHeaders,
+      body: { email: member.email, role },
+    })
+    await loadMembers()
+  } catch (err) {
+    memberError.value = err.data?.statusMessage || err.message || 'Failed to update role'
+  }
+}
+
+/** Revoke (kick) a member. */
+const kickMember = async (member) => {
+  const hash = activeHash.value
+  if (!hash) return
+  memberError.value = null
+  try {
+    await apiFetch(`/api/share/${hash}/members/${member.id}`, {
+      method: 'DELETE',
+      headers: props.authHeaders,
+    })
+    await loadMembers()
+  } catch (err) {
+    memberError.value = err.data?.statusMessage || err.message || 'Failed to remove member'
+  }
+}
+
+/** Persist changed settings to the share via PATCH (owner or delete-token). */
+const saveSettings = async () => {
+  const hash = activeHash.value
+  if (!hash) return
+  savingSettings.value = true
+  settingsError.value = null
+  settingsSaved.value = false
+  try {
+    // Anonymous owners authorise via their stored delete token.
+    let tokenParam = ''
+    if (!props.isLoggedIn) {
+      const record = await db.shareTokens.get(hash).catch(() => null)
+      if (record?.token) tokenParam = `?_token=${encodeURIComponent(record.token)}`
+    }
+    await apiFetch(`/api/share/${hash}${tokenParam}`, {
+      method: 'PATCH',
+      headers: props.authHeaders,
+      body: {
+        allowGuests: manageAllowGuests.value,
+        access: manageAccess.value,
+        expiresInDays: manageExpires.value ? manageExpiresDays.value : null,
+      },
+    })
+    settingsSaved.value = true
+    setTimeout(() => {
+      settingsSaved.value = false
+    }, 2500)
+  } catch (err) {
+    settingsError.value = err.data?.statusMessage || err.message || 'Failed to update settings'
+  } finally {
+    savingSettings.value = false
+  }
+}
+
+/**
+ * Switch an existing share between read-only and collaborative.
+ *  - to collaborative: create an Automerge document seeded from the note's
+ *    current content (client-side; the server can't build a CRDT), then PATCH
+ *    the share with its url and store the local mapping so the editor binds.
+ *  - to read-only: freeze the current content as the static snapshot, drop the
+ *    local collaborative mapping, and let the PATCH boot the live room.
+ * The bound editor re-binds when the note is reopened (hence the hint).
+ */
+const switchMode = async (target) => {
+  const hash = activeHash.value
+  if (!hash || !props.note || manageMode.value === target || switchingMode.value) return
+  switchingMode.value = target
+  settingsError.value = null
+  modeSwitched.value = false
+  try {
+    let tokenParam = ''
+    if (!props.isLoggedIn) {
+      const record = await db.shareTokens.get(hash).catch(() => null)
+      if (record?.token) tokenParam = `?_token=${encodeURIComponent(record.token)}`
+    }
+
+    if (target === 'collaborative') {
+      const { createCollabDoc } = await import('~/utils/collab.js')
+      const handle = await createCollabDoc(props.note.content || '')
+      await apiFetch(`/api/share/${hash}${tokenParam}`, {
+        method: 'PATCH',
+        headers: props.authHeaders,
+        body: { mode: 'collaborative', automergeUrl: handle.url, access: manageAccess.value },
+      })
+      await db.collabDocs
+        .put({
+          noteId: props.note.id,
+          hash,
+          automergeUrl: handle.url,
+          collabToken: null,
+          role: 'editor',
+        })
+        .catch(() => {})
+    } else {
+      await apiFetch(`/api/share/${hash}${tokenParam}`, {
+        method: 'PATCH',
+        headers: props.authHeaders,
+        body: { mode: 'read-only', content: props.note.content || '' },
+      })
+      await db.collabDocs.delete(props.note.id).catch(() => {})
+    }
+
+    manageMode.value = target
+    modeSwitched.value = true
+  } catch (err) {
+    settingsError.value = err.data?.statusMessage || err.message || 'Failed to switch mode'
+  } finally {
+    switchingMode.value = null
+  }
+}
+
+// Populate the settings panel whenever a share becomes active (freshly created
+// or an existing one opened for management).
+watch(activeHash, (hash) => {
+  if (hash) loadSettings()
+}, { immediate: true })
 </script>

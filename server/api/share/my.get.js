@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const result = await query(
     `
     SELECT hash, title, anonymous, expires_at, created_at, collect_analytics, deleted_at,
-           source_client_id, mode, allow_guests, automerge_url
+           source_client_id, mode, allow_guests, automerge_url, access
     FROM shared_notes
     WHERE user_id = $1
     ORDER BY created_at DESC
@@ -31,5 +31,6 @@ export default defineEventHandler(async (event) => {
     mode: row.mode === 'collaborative' ? 'collaborative' : 'read-only',
     allowGuests: row.allow_guests === true,
     automergeUrl: row.automerge_url || null,
+    access: row.access === 'private' ? 'private' : 'public',
   }))
 })

@@ -167,4 +167,15 @@ db.version(7).stores({
   collabDocs: 'noteId, hash, automergeUrl',
 })
 
+// ── Version 8 — imported shares (auto-import dedup + read-only marking) ──
+// Records notes created by opening a share link, keyed by the share `hash`, so
+// re-opening the same link selects the existing note instead of duplicating it.
+//   hash     — the share hash (primary key)
+//   noteId   — the local note created for it
+//   readOnly — true for read-only shares (the imported copy is view-only until
+//              the user duplicates it into an independent, editable note)
+db.version(8).stores({
+  importedShares: 'hash, noteId',
+})
+
 export default db

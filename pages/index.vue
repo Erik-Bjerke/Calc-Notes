@@ -125,9 +125,30 @@
       >
         <div class="absolute top-0 left-0 right-0 h-3 z-10 pointer-events-none bg-gradient-to-b from-black/[0.06] to-transparent dark:from-black/[0.25]" />
         <template v-if="currentNote">
+          <!-- Read-only notice for imported read-only shares -->
+          <div
+            v-if="isImportedReadOnly"
+            class="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b text-sm bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800/40 text-sky-700 dark:text-sky-300"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <Icon name="mdi:eye-outline" class="w-4 h-4 flex-shrink-0" />
+              <span class="truncate">This is a read-only shared note. Duplicate it to edit.</span>
+            </div>
+            <UiButton
+              size="sm"
+              variant="outline"
+              color="primary"
+              class="flex-shrink-0"
+              @click="duplicateReadOnlyNote"
+            >
+              <Icon name="mdi:content-copy" class="w-4 h-4" />
+              Duplicate
+            </UiButton>
+          </div>
+
           <!-- Read-only notice for archived / binned notes -->
           <div
-            v-if="currentNoteReadOnly"
+            v-if="currentNoteReadOnly && !isImportedReadOnly"
             class="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b text-sm"
             :class="
               currentNote.deletedAt
@@ -182,7 +203,7 @@
               :note-id="currentNote.id"
               :collab-handle="collabHandle"
               :presence="collabHandle ? { name: auth.user.value?.name || 'Anonymous' } : null"
-              :editable="!currentNoteReadOnly"
+              :editable="!currentNoteReadOnly && !collabReadOnly"
               :show-inline="showInlineResults !== 'off'"
               :inline-align="showInlineResults === 'off' ? 'left' : showInlineResults"
               :locale-preferences="localePrefs.preferences"
@@ -370,7 +391,11 @@ const welcomeWizard = useWelcomeWizard()
 // shared for real-time editing (owner side). collabHandle is null for normal
 // notes, in which case the editor behaves exactly as before.
 const auth = useAuth()
-const { collabHandle } = useCollabNote(currentNote, auth)
+const { collabHandle, collabRole } = useCollabNote(currentNote, auth)
+// A collaborative viewer edits read-only (a read-only editor emits no changes,
+// so nothing propagates upstream — the reliable client-side half of read-only
+// enforcement; the server also scopes their token to 'read').
+const collabReadOnly = computed(() => collabRole.value === 'viewer')
 const { apiFetch } = useApi()
 const toast = useToast()
 const appLock = useAppLock()
@@ -653,11 +678,32 @@ const handleShowNotes = () => {
 // Check for pending import from shared note page
 onMounted(async () => {
   const { default: db } = await import('~/db.js')
+
+  // Restore read-only markers for previously imported read-only shares.
+  try {
+    const imported = await db.importedShares.toArray()
+    for (const r of imported) if (r.readOnly) readOnlyNoteIds.value.add(r.noteId)
+  } catch {
+    /* table unavailable */
+  }
+
   const row = await db.appState.get('pending_import')
   if (row?.value) {
     await db.appState.delete('pending_import')
     try {
       const data = JSON.parse(row.value)
+
+      // Dedup: re-opening the same share link selects the existing note rather
+      // than creating a duplicate.
+      if (data.sourceHash) {
+        const prior = await db.importedShares.get(data.sourceHash).catch(() => null)
+        if (prior?.noteId && notes.value.some((n) => n.id === prior.noteId)) {
+          if (prior.readOnly) readOnlyNoteIds.value.add(prior.noteId)
+          currentNoteId.value = prior.noteId
+          return
+        }
+      }
+
       const newNote = createNote()
       updateNoteMeta(newNote.id, {
         title: data.title,
@@ -665,6 +711,7 @@ onMounted(async () => {
         tags: Array.isArray(data.tags) ? data.tags : [],
       })
       updateNoteContent(newNote.id, data.content)
+
       // Collaborative import: link this note to the shared Automerge document so
       // it stays collaborative in the library (useCollabNote binds the editor).
       if (data.collab?.automergeUrl) {
@@ -673,9 +720,21 @@ onMounted(async () => {
           hash: data.collab.hash || null,
           automergeUrl: data.collab.automergeUrl,
           collabToken: data.collab.collabToken || null,
+          role: data.collab.role || 'editor',
         })
-        currentNoteId.value = newNote.id
       }
+
+      // Read-only import: mark the copy view-only until the user duplicates it.
+      if (data.readOnly) readOnlyNoteIds.value.add(newNote.id)
+
+      // Record the import so future opens of the same link dedup to this note.
+      if (data.sourceHash) {
+        await db.importedShares
+          .put({ hash: data.sourceHash, noteId: newNote.id, readOnly: !!data.readOnly })
+          .catch(() => {})
+      }
+
+      currentNoteId.value = newNote.id
     } catch { /* ignore bad data */ }
   }
 })
@@ -747,11 +806,37 @@ const revealNoteInTree = (id) => {
 
 const openEditModal = (id) => { currentNoteId.value = id; showMetaModal.value = true }
 
-// Archived and binned notes are read-only — the user must unarchive/restore first.
+// Notes imported from a read-only share are view-only until duplicated. Backed
+// by the importedShares table; loaded once on mount into a reactive Set.
+const readOnlyNoteIds = ref(new Set())
+
+// Archived and binned notes are read-only — the user must unarchive/restore
+// first. Read-only share imports are also view-only (duplicate to edit).
 const currentNoteReadOnly = computed(() => {
   const n = currentNote.value
-  return !!n && (n.archived || !!n.deletedAt)
+  return !!n && (n.archived || !!n.deletedAt || readOnlyNoteIds.value.has(n.id))
 })
+
+// A note imported from a read-only share (view-only, not archived/binned).
+const isImportedReadOnly = computed(() => {
+  const n = currentNote.value
+  return !!n && !n.archived && !n.deletedAt && readOnlyNoteIds.value.has(n.id)
+})
+
+// Duplicate a read-only imported note into a fresh, independent, editable note
+// owned by this user (a brand-new note — not linked to the original share).
+const duplicateReadOnlyNote = () => {
+  const n = currentNote.value
+  if (!n) return
+  const copy = createNote()
+  updateNoteMeta(copy.id, {
+    title: n.title ? `${n.title} (copy)` : 'Untitled Note',
+    description: n.description || '',
+    tags: Array.isArray(n.tags) ? [...n.tags] : [],
+  })
+  updateNoteContent(copy.id, n.content)
+  currentNoteId.value = copy.id
+}
 
 const updateContent = (content) => {
   if (!currentNote.value || currentNoteReadOnly.value) return

@@ -23,6 +23,7 @@ async function main() {
     host: HOST,
     storage: process.env.COLLAB_STORAGE || 'in-memory',
     requireAuth: process.env.COLLAB_REQUIRE_AUTH !== 'false',
+    dbAuthz: process.env.COLLAB_DB_AUTHZ === 'true',
     jwtSecretSet: !!process.env.JWT_SECRET,
     postgresHost: process.env.POSTGRES_HOST || '(unset)',
   })
@@ -30,12 +31,25 @@ async function main() {
   const { sharePolicy, authenticate } = await createAuth()
 
   const evictIdleAfterMs = parseInt(process.env.COLLAB_IDLE_EVICT_MS || '300000', 10)
-  const { listen, close } = createCollabServer({
+  const { listen, close, revoke } = createCollabServer({
     storage,
     sharePolicy,
     authenticate,
     evictIdleAfterMs,
   })
+
+  // With DB authorization on, subscribe to live revocation signals from the API
+  // so kicks / stop-sharing / access changes disconnect affected peers at once.
+  let stopRevocation = null
+  if (process.env.COLLAB_DB_AUTHZ === 'true') {
+    try {
+      const { startRevocationListener } = await import('./revocation.mjs')
+      stopRevocation = await startRevocationListener((payload) => revoke(payload))
+    } catch (err) {
+      console.warn('[collab] revoke: failed to start listener:', err?.message)
+    }
+  }
+
   const addr = await listen(PORT, HOST)
   const where =
     typeof addr === 'object' && addr ? `${addr.address}:${addr.port}` : `${HOST}:${PORT}`
@@ -43,6 +57,7 @@ async function main() {
 
   const shutdown = async (signal) => {
     console.warn(`[collab] ${signal} received, shutting down…`)
+    if (stopRevocation) await stopRevocation().catch(() => {})
     await close()
     process.exit(0)
   }

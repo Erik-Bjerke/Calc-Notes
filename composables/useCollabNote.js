@@ -19,6 +19,10 @@ export function useCollabNote(noteRef, auth = null) {
   const { collabWsUrl } = useCollabConfig()
   const { apiFetch } = useApi()
   const collabHandle = ref(null)
+  // The current user's role on the bound collaborative note ('editor' | 'viewer'
+  // | null). Drives read-only editing for viewers — a read-only editor produces
+  // no local changes, so the CRDT sync has nothing to write upstream.
+  const collabRole = ref(null)
 
   const isCollab = computed(() => !!collabHandle.value)
 
@@ -26,6 +30,7 @@ export function useCollabNote(noteRef, auth = null) {
     () => noteRef.value?.id,
     async (id) => {
       collabHandle.value = null
+      collabRole.value = null
       if (!id || !import.meta.client) return
 
       let mapping
@@ -35,7 +40,17 @@ export function useCollabNote(noteRef, auth = null) {
         return
       }
       if (!mapping?.automergeUrl) return
+      // Seed role from the cached mapping; refreshed from the share on re-mint.
+      collabRole.value = mapping.role || null
       clog('useCollabNote: note', id, 'is collaborative →', mapping.automergeUrl)
+
+      // A guest kicked from this room shouldn't silently auto-rejoin on
+      // refresh. Best-effort deterrent: skip the live connection (they keep any
+      // local copy but stop syncing). Accounts are gated server-side instead.
+      const isGuest = !auth?.isLoggedIn?.value
+      const kicked = isGuest && isKicked(mapping.hash)
+      if (kicked)
+        clog('useCollabNote: guest kicked from', mapping.hash, '— local only, not rejoining')
 
       // Ensure a usable capability token. On a device that received the note
       // through account sync the linkage has no token; tokens also expire
@@ -43,11 +58,15 @@ export function useCollabNote(noteRef, auth = null) {
       // users get a 'user' write token; guests get a guest token when the share
       // allows them. Without a hash we can't re-mint and rely on any cached one.
       let token = mapping.collabToken
-      if (mapping.hash && isCollabTokenExpired(token)) {
+      if (!kicked && mapping.hash && isCollabTokenExpired(token)) {
         try {
           clog('useCollabNote: (re)minting collab token from hash', mapping.hash)
           const headers = auth?.authHeaders?.value || {}
           const share = await apiFetch(`/api/share/${mapping.hash}`, { headers })
+          if (share?.role) {
+            collabRole.value = share.role
+            await db.collabDocs.update(id, { role: share.role }).catch(() => {})
+          }
           if (share?.collabToken) {
             token = share.collabToken
             await db.collabDocs.update(id, { collabToken: token }).catch(() => {})
@@ -60,10 +79,17 @@ export function useCollabNote(noteRef, auth = null) {
       }
 
       try {
-        const { connectCollabNetwork, loadCollabDoc } = await import('~/utils/collab.js')
-        if (token) {
+        const { connectCollabNetwork, loadCollabDoc, disconnectCollabNetwork } =
+          await import('~/utils/collab.js')
+        if (!kicked && token) {
           clog('useCollabNote: connecting network', collabWsUrl())
-          await connectCollabNetwork(collabWsUrl(), token)
+          await connectCollabNetwork(collabWsUrl(), token, () => {
+            // Server booted us (close 4001): mark a guest so a refresh won't
+            // rejoin, and drop the connection to stop auto-reconnect.
+            if (isGuest) markKicked(mapping.hash)
+            disconnectCollabNetwork()
+            clog('useCollabNote: revoked by server (4001) — disconnected')
+          })
         }
         clog('useCollabNote: loading document…')
         const handle = await loadCollabDoc(mapping.automergeUrl)
@@ -86,5 +112,5 @@ export function useCollabNote(noteRef, auth = null) {
     { immediate: true },
   )
 
-  return { collabHandle, isCollab }
+  return { collabHandle, isCollab, collabRole }
 }

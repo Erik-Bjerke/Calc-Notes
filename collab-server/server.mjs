@@ -46,6 +46,26 @@ import { WebSocketServerAdapter } from '@automerge/automerge-repo-network-websoc
  *   to reject the socket before it joins the repo. Defaults to allow-all.
  * @returns {{ httpServer: http.Server, wss: WebSocketServer, repo: Repo, listen: Function, close: Function }}
  */
+/**
+ * Decide whether a connection (tagged with its `collab` metadata) is targeted
+ * by a revocation. Matching is per-document; within a document a revocation can
+ * target a specific account (userId), a specific guest session (sid), a whole
+ * kind ('guest'|'user'), or — when no target is given — everyone in the room.
+ *
+ * @param {{documentId:string,userId:?number,sid:?string,kind:string}|null} collab
+ * @param {{documentId:string,userId?:?number,sid?:?string,kind?:?string}} criteria
+ * @returns {boolean}
+ */
+export function matchesRevocation(collab, criteria) {
+  if (!collab || !criteria || collab.documentId !== criteria.documentId) return false
+  const { userId = null, sid = null, kind = null } = criteria
+  if (userId == null && sid == null && kind == null) return true // boot everyone in the room
+  if (userId != null && collab.userId === userId) return true
+  if (sid != null && collab.sid === sid) return true
+  if (kind != null && collab.kind === kind) return true
+  return false
+}
+
 export function createCollabServer(options = {}) {
   const {
     storage,
@@ -76,6 +96,14 @@ export function createCollabServer(options = {}) {
   // We handle the upgrade manually so a connection can be rejected (auth)
   // before it is handed to the Automerge network adapter.
   const wss = new WebSocketServer({ noServer: true })
+
+  // Tag each socket with the identity the auth gate resolved (documentId,
+  // userId, sid, kind) so it can later be targeted for revocation. The
+  // Automerge adapter also listens for 'connection'; this extra listener is
+  // independent and only reads req.
+  wss.on('connection', (ws, req) => {
+    ws._collab = req?.collab || null
+  })
 
   httpServer.on('upgrade', async (req, socket, head) => {
     log('WS upgrade attempt:', req.url)
@@ -164,6 +192,27 @@ export function createCollabServer(options = {}) {
     })
   }
 
+  /**
+   * Immediately disconnect every live socket matching the revocation criteria
+   * (see matchesRevocation). Returns the number of sockets closed. A booted
+   * peer that tries to reconnect is re-checked by the auth gate.
+   */
+  const revoke = (criteria) => {
+    let count = 0
+    for (const ws of wss.clients) {
+      if (matchesRevocation(ws._collab, criteria)) {
+        try {
+          ws.close(4001, 'revoked')
+        } catch {
+          /* already closing */
+        }
+        count++
+      }
+    }
+    if (count) log('revoked', count, 'socket(s) for', criteria)
+    return count
+  }
+
   const close = () =>
     new Promise((resolve) => {
       if (evictTimer) clearInterval(evictTimer)
@@ -180,5 +229,5 @@ export function createCollabServer(options = {}) {
       })
     })
 
-  return { httpServer, wss, repo, listen, close }
+  return { httpServer, wss, repo, listen, close, revoke }
 }

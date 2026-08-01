@@ -138,7 +138,7 @@ export async function flushDoc(handle) {
  * @param {string} [token] collab capability token (JWT) for the upgrade
  * @returns {Promise<void>}
  */
-export async function connectCollabNetwork(url, token) {
+export async function connectCollabNetwork(url, token, onRevoked) {
   if (!url) {
     throw new Error('Collaboration server URL is not configured')
   }
@@ -153,10 +153,75 @@ export async function connectCollabNetwork(url, token) {
   }
   clog('connectCollabNetwork: creating WebSocketClientAdapter')
   networkAdapter = new WebSocketClientAdapter(fullUrl)
+  // Detect a server-initiated revocation (close code 4001) so the caller can
+  // react (e.g. mark a kicked guest so a refresh won't auto-rejoin). Best-effort
+  // and defensive: if the adapter internals change, this simply never fires.
+  if (typeof onRevoked === 'function') {
+    installRevocationHook(networkAdapter, onRevoked)
+  }
   clog('connectCollabNetwork: adding adapter to repo.networkSubsystem')
   repo.networkSubsystem.addNetworkAdapter(networkAdapter)
   connectedUrl = fullUrl
   clog('connectCollabNetwork: adapter attached')
+}
+
+/** Close code the sync service uses when it boots a revoked/kicked peer. */
+export const COLLAB_REVOKED_CLOSE_CODE = 4001
+
+/**
+ * Watch the adapter's WebSocket for a revocation close (4001). The adapter
+ * assigns `this.socket` on every (re)connect, so we intercept assignments with
+ * a getter/setter to re-attach the listener across reconnects.
+ */
+function installRevocationHook(adapter, onRevoked) {
+  let sock = null
+  const attach = (s) => {
+    if (!s || typeof s.addEventListener !== 'function') return
+    s.addEventListener('close', (ev) => {
+      if (ev?.code === COLLAB_REVOKED_CLOSE_CODE) {
+        try {
+          onRevoked()
+        } catch {
+          /* ignore */
+        }
+      }
+    })
+  }
+  try {
+    Object.defineProperty(adapter, 'socket', {
+      configurable: true,
+      get() {
+        return sock
+      },
+      set(s) {
+        sock = s
+        attach(s)
+      },
+    })
+  } catch {
+    /* adapter doesn't allow redefining socket — skip the hook */
+  }
+}
+
+/**
+ * Tear down the shared network connection so the repo stops (re)connecting —
+ * used after a revocation so a booted peer doesn't immediately auto-rejoin.
+ */
+export async function disconnectCollabNetwork() {
+  if (!networkAdapter) return
+  try {
+    networkAdapter.disconnect?.()
+  } catch {
+    /* ignore */
+  }
+  try {
+    const repo = await getRepo()
+    repo.networkSubsystem.removeNetworkAdapter?.(networkAdapter)
+  } catch {
+    /* older repo without removeNetworkAdapter — disconnect() suffices */
+  }
+  networkAdapter = null
+  connectedUrl = null
 }
 
 /** Whether a collab network connection has been established this session. */

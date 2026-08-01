@@ -20,6 +20,9 @@ async function ensureExtraColumns() {
   await query(`ALTER TABLE shared_notes ADD COLUMN IF NOT EXISTS automerge_url TEXT`).catch(
     () => {},
   )
+  await query(
+    `ALTER TABLE shared_notes ADD COLUMN IF NOT EXISTS access TEXT NOT NULL DEFAULT 'public'`,
+  ).catch(() => {})
 }
 
 /**
@@ -56,11 +59,16 @@ export default defineEventHandler(async (event) => {
     mode: rawMode,
     allowGuests,
     automergeUrl,
+    access: rawAccess,
   } = body || {}
 
   // Collaborative sharing: a share is 'read-only' (static snapshot) or
   // 'collaborative' (real-time co-editing backed by an Automerge document).
   const mode = rawMode === 'collaborative' ? 'collaborative' : 'read-only'
+
+  // Access model: 'private' restricts a collaborative share to allowlisted
+  // accounts (see share_members); 'public' is link-based. Defaults to public.
+  const access = rawAccess === 'private' ? 'private' : 'public'
 
   if (!content && !title) {
     throw createError({ statusCode: 400, statusMessage: 'Title or content is required to share' })
@@ -86,8 +94,22 @@ export default defineEventHandler(async (event) => {
     email = sharerEmail || null
   }
 
-  const days = Math.min(Math.max(parseInt(expiresInDays) || 30, 1), 30)
-  const expiresAt = new Date(Date.now() + days * 86400000).toISOString()
+  // Expiry policy:
+  //  - read-only shares keep the existing 1–30 day window (default 30).
+  //  - collaborative shares are owner-controlled: no expiry by default
+  //    (expires_at = NULL); a positive expiresInDays opts into one, with no
+  //    30-day cap since the owner decides how long it lives.
+  let expiresAt
+  if (mode === 'collaborative') {
+    const collabDays = parseInt(expiresInDays)
+    expiresAt =
+      Number.isFinite(collabDays) && collabDays > 0
+        ? new Date(Date.now() + collabDays * 86400000).toISOString()
+        : null
+  } else {
+    const days = Math.min(Math.max(parseInt(expiresInDays) || 30, 1), 30)
+    expiresAt = new Date(Date.now() + days * 86400000).toISOString()
+  }
 
   // Tags may be an encrypted string or an array
   const tagsValue = typeof tags === 'string' ? tags : JSON.stringify(tags || [])
@@ -125,6 +147,7 @@ export default defineEventHandler(async (event) => {
     'mode',
     'allow_guests',
     'automerge_url',
+    'access',
   ]
   const params = [
     hash,
@@ -143,6 +166,7 @@ export default defineEventHandler(async (event) => {
     mode,
     allowGuests === true,
     mode === 'collaborative' ? automergeUrl || null : null,
+    access,
   ]
 
   if (hint) {
@@ -158,7 +182,7 @@ export default defineEventHandler(async (event) => {
   const placeholders = params.map((_, i) => `$${i + 1}`).join(', ')
   await query(`INSERT INTO shared_notes (${columns.join(', ')}) VALUES (${placeholders})`, params)
 
-  const response = { hash, mode }
+  const response = { hash, mode, access }
   if (deleteToken) {
     response.deleteToken = deleteToken
   }
