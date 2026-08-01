@@ -3,6 +3,15 @@
  *
  * Focuses on encryption-related behavior: opaque field storage,
  * tags handling (string vs array), hard delete with tombstones, and pull responses.
+ *
+ * Handler query order (each consumes one mockQuery result):
+ *   0. SELECT data_wiped_at
+ *   1. (if deletes) DELETE FROM notes, then one INSERT tombstone per id
+ *   2. (per note) SELECT tombstone, then INSERT/UPSERT
+ *   3. (if any client ids) SELECT server-deleted ids
+ *   4. SELECT pull
+ *   5. SELECT welcome_created
+ *   6. DELETE tombstone purge
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -28,6 +37,10 @@ globalThis.createError = (opts) => {
 
 const handler = (await import('../sync.post.js')).default
 
+/** Mock the initial `SELECT data_wiped_at` query (always the handler's first). */
+const mockDataWipedAt = (value = null) =>
+  mockQuery.mockResolvedValueOnce({ rows: [{ data_wiped_at: value }] })
+
 beforeEach(() => {
   vi.clearAllMocks()
   mockRequireAuth.mockResolvedValue({ userId: 1 })
@@ -52,10 +65,10 @@ describe('POST /api/notes/sync', () => {
       deletedClientIds: [],
     })
 
-    // 1. Check tombstone for n1
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-    // 2. INSERT/UPSERT
+    mockDataWipedAt() // 0. SELECT data_wiped_at
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 1. tombstone check for n1
     mockQuery.mockResolvedValueOnce({
+      // 2. INSERT/UPSERT
       rows: [
         {
           id: 1,
@@ -70,20 +83,16 @@ describe('POST /api/notes/sync', () => {
         },
       ],
     })
-    // 3. Check server-deleted IDs
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-    // 4. Pull all notes
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-    // 5. SELECT welcome_created
-    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] })
-    // 6. Tombstone purge
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 3. server-deleted IDs
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 4. pull
+    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // 5. welcome_created
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 6. tombstone purge
 
     await handler({})
 
-    // The INSERT call (2nd query) should have the encrypted tags string directly
-    const insertCall = mockQuery.mock.calls[1]
-    expect(insertCall[1][4]).toBe(encryptedTags) // tags param
+    // INSERT is the 3rd query (index 2); tags is param index 4
+    const insertCall = mockQuery.mock.calls[2]
+    expect(insertCall[1][4]).toBe(encryptedTags)
   })
 
   it('JSON.stringifies array tags (legacy)', async () => {
@@ -102,8 +111,10 @@ describe('POST /api/notes/sync', () => {
       deletedClientIds: [],
     })
 
-    mockQuery.mockResolvedValueOnce({ rows: [] }) // check tombstone
+    mockDataWipedAt() // 0
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 1. tombstone check
     mockQuery.mockResolvedValueOnce({
+      // 2. INSERT
       rows: [
         {
           id: 1,
@@ -118,15 +129,82 @@ describe('POST /api/notes/sync', () => {
         },
       ],
     })
-    mockQuery.mockResolvedValueOnce({ rows: [] }) // server-deleted IDs
-    mockQuery.mockResolvedValueOnce({ rows: [] }) // pull
-    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // welcome_created
-    mockQuery.mockResolvedValueOnce({ rows: [] }) // tombstone purge
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 3. server-deleted IDs
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 4. pull
+    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // 5. welcome_created
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 6. tombstone purge
 
     await handler({})
 
-    const insertCall = mockQuery.mock.calls[1]
+    const insertCall = mockQuery.mock.calls[2]
     expect(insertCall[1][4]).toBe('["tag1","tag2"]')
+  })
+
+  it('round-trips the collab linkage blob (push + pull)', async () => {
+    const collab = '{"iv":"x","ct":"y"}'
+    readBody.mockResolvedValue({
+      notes: [
+        {
+          clientId: 'n1',
+          title: 't',
+          content: 'c',
+          collab,
+          sortOrder: 0,
+          createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+        },
+      ],
+      deletedClientIds: [],
+    })
+
+    mockDataWipedAt() // 0
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 1. tombstone check
+    mockQuery.mockResolvedValueOnce({
+      // 2. INSERT
+      rows: [
+        {
+          id: 1,
+          client_id: 'n1',
+          title: 't',
+          description: '',
+          tags: '[]',
+          content: 'c',
+          sort_order: 0,
+          collab,
+          created_at: '2025-01-01',
+          updated_at: '2025-01-01',
+        },
+      ],
+    })
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 3. server-deleted IDs
+    mockQuery.mockResolvedValueOnce({
+      // 4. pull
+      rows: [
+        {
+          id: 1,
+          client_id: 'n1',
+          title: 't',
+          description: '',
+          tags: '[]',
+          content: 'c',
+          sort_order: 0,
+          collab,
+          created_at: '2025-01-01',
+          updated_at: '2025-01-01',
+        },
+      ],
+    })
+    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // 5. welcome_created
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 6. tombstone purge
+
+    const result = await handler({})
+
+    // collab is passed to the INSERT at param index 11
+    const insertCall = mockQuery.mock.calls[2]
+    expect(insertCall[1][11]).toBe(collab)
+    // and surfaced on both pushed and pulled
+    expect(result.pushed[0].collab).toBe(collab)
+    expect(result.pulled[0].collab).toBe(collab)
   })
 
   it('hard-deletes notes and records tombstones', async () => {
@@ -135,27 +213,22 @@ describe('POST /api/notes/sync', () => {
       deletedClientIds: ['n1', 'n2'],
     })
 
-    // 1. DELETE FROM notes
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-    // 2. INSERT tombstone for n1
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-    // 3. INSERT tombstone for n2
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-    // 4. Pull query
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-    // 5. SELECT welcome_created
-    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] })
-    // 6. Tombstone purge
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    mockDataWipedAt() // 0
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 1. DELETE FROM notes
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 2. INSERT tombstone n1
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 3. INSERT tombstone n2
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 4. pull
+    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // 5. welcome_created
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 6. tombstone purge
 
     await handler({})
 
-    // First query is the hard DELETE
-    expect(mockQuery.mock.calls[0][0]).toContain('DELETE FROM notes')
-    expect(mockQuery.mock.calls[0][1]).toEqual([1, ['n1', 'n2']])
-    // Tombstone inserts
-    expect(mockQuery.mock.calls[1][0]).toContain('INSERT INTO deleted_notes')
+    // DELETE is now the 2nd query (index 1)
+    expect(mockQuery.mock.calls[1][0]).toContain('DELETE FROM notes')
+    expect(mockQuery.mock.calls[1][1]).toEqual([1, ['n1', 'n2']])
+    // Tombstone inserts follow
     expect(mockQuery.mock.calls[2][0]).toContain('INSERT INTO deleted_notes')
+    expect(mockQuery.mock.calls[3][0]).toContain('INSERT INTO deleted_notes')
   })
 
   it('skips notes that have a tombstone on server', async () => {
@@ -173,16 +246,12 @@ describe('POST /api/notes/sync', () => {
       deletedClientIds: [],
     })
 
-    // 1. Check tombstone: exists
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }] })
-    // 2. Check server-deleted IDs
-    mockQuery.mockResolvedValueOnce({ rows: [{ client_id: 'n1' }] })
-    // 3. Pull query
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-    // 4. SELECT welcome_created
-    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] })
-    // 5. Tombstone purge
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    mockDataWipedAt() // 0
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }] }) // 1. tombstone check: exists
+    mockQuery.mockResolvedValueOnce({ rows: [{ client_id: 'n1' }] }) // 2. server-deleted IDs
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 3. pull
+    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // 4. welcome_created
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 5. tombstone purge
 
     const result = await handler({})
 
@@ -192,8 +261,9 @@ describe('POST /api/notes/sync', () => {
   it('returns pulled notes with encrypted fields intact', async () => {
     readBody.mockResolvedValue({ notes: [], deletedClientIds: [] })
 
-    // Pull query
+    mockDataWipedAt() // 0
     mockQuery.mockResolvedValueOnce({
+      // 1. pull
       rows: [
         {
           id: 1,
@@ -208,10 +278,8 @@ describe('POST /api/notes/sync', () => {
         },
       ],
     })
-    // SELECT welcome_created
-    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] })
-    // Tombstone purge
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // 2. welcome_created
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 3. tombstone purge
 
     const result = await handler({})
 
@@ -227,9 +295,10 @@ describe('POST /api/notes/sync', () => {
       sessionId: 'sess-1',
       broadcast: true,
     })
-    mockQuery.mockResolvedValueOnce({ rows: [] }) // pull
-    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // welcome_created
-    mockQuery.mockResolvedValueOnce({ rows: [] }) // tombstone purge
+    mockDataWipedAt() // 0
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 1. pull
+    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // 2. welcome_created
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 3. tombstone purge
 
     await handler({})
 
@@ -242,9 +311,10 @@ describe('POST /api/notes/sync', () => {
       deletedClientIds: [],
       broadcast: false,
     })
-    mockQuery.mockResolvedValueOnce({ rows: [] }) // pull
-    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // welcome_created
-    mockQuery.mockResolvedValueOnce({ rows: [] }) // tombstone purge
+    mockDataWipedAt() // 0
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 1. pull
+    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // 2. welcome_created
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 3. tombstone purge
 
     await handler({})
 
@@ -266,10 +336,10 @@ describe('POST /api/notes/sync', () => {
       deletedClientIds: [],
     })
 
-    // 1. Check tombstone for n1: not deleted
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-    // 2. INSERT
+    mockDataWipedAt() // 0
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 1. tombstone check: not deleted
     mockQuery.mockResolvedValueOnce({
+      // 2. INSERT
       rows: [
         {
           id: 1,
@@ -284,14 +354,10 @@ describe('POST /api/notes/sync', () => {
         },
       ],
     })
-    // 3. Check which client IDs are tombstoned
-    mockQuery.mockResolvedValueOnce({ rows: [{ client_id: 'n1' }] })
-    // 4. Pull
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-    // 5. SELECT welcome_created
-    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] })
-    // 6. Tombstone purge
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ client_id: 'n1' }] }) // 3. server-deleted IDs
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 4. pull
+    mockQuery.mockResolvedValueOnce({ rows: [{ welcome_created: false }] }) // 5. welcome_created
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // 6. tombstone purge
 
     const result = await handler({})
     expect(result.deletedClientIds).toEqual(['n1'])

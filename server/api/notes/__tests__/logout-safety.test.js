@@ -40,6 +40,8 @@ describe('empty push does not delete server notes', () => {
       broadcast: false,
     })
 
+    // 0. SELECT data_wiped_at (handler's first query)
+    mockQuery.mockResolvedValueOnce({ rows: [{ data_wiped_at: null }] })
     // pull
     mockQuery.mockResolvedValueOnce({
       rows: [
@@ -110,6 +112,7 @@ describe('empty push does not delete server notes', () => {
       broadcast: false,
     })
 
+    mockQuery.mockResolvedValueOnce({ rows: [{ data_wiped_at: null }] }) // 0. data_wiped_at
     mockQuery.mockResolvedValueOnce({ rows: [] }) // check tombstone
     mockQuery.mockResolvedValueOnce({
       rows: [
@@ -185,6 +188,8 @@ describe('empty push does not delete server notes', () => {
       broadcast: false,
     })
 
+    // 0. SELECT data_wiped_at (handler's first query)
+    mockQuery.mockResolvedValueOnce({ rows: [{ data_wiped_at: null }] })
     // 1. DELETE FROM notes
     mockQuery.mockResolvedValueOnce({ rows: [] })
     // 2. INSERT tombstone for n2
@@ -224,8 +229,8 @@ describe('empty push does not delete server notes', () => {
     const result = await syncHandler({})
 
     expect(result.pulled).toHaveLength(2)
-    // First query is the hard DELETE
-    const deleteCall = mockQuery.mock.calls[0]
+    // DELETE is the 2nd query (index 1) — data_wiped_at is queried first
+    const deleteCall = mockQuery.mock.calls[1]
     expect(deleteCall[0]).toContain('DELETE FROM notes')
     expect(deleteCall[1][1]).toEqual(['n2'])
   })

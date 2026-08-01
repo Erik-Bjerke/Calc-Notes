@@ -15,8 +15,9 @@
  */
 import db from '~/db.js'
 
-export function useCollabNote(noteRef) {
+export function useCollabNote(noteRef, auth = null) {
   const { collabWsUrl } = useCollabConfig()
+  const { apiFetch } = useApi()
   const collabHandle = ref(null)
 
   const isCollab = computed(() => !!collabHandle.value)
@@ -36,11 +37,33 @@ export function useCollabNote(noteRef) {
       if (!mapping?.automergeUrl) return
       clog('useCollabNote: note', id, 'is collaborative →', mapping.automergeUrl)
 
+      // Ensure a usable capability token. On a device that received the note
+      // through account sync the linkage has no token; tokens also expire
+      // (~12h). Re-mint from the share hash on demand and cache it. Signed-in
+      // users get a 'user' write token; guests get a guest token when the share
+      // allows them. Without a hash we can't re-mint and rely on any cached one.
+      let token = mapping.collabToken
+      if (mapping.hash && isCollabTokenExpired(token)) {
+        try {
+          clog('useCollabNote: (re)minting collab token from hash', mapping.hash)
+          const headers = auth?.authHeaders?.value || {}
+          const share = await apiFetch(`/api/share/${mapping.hash}`, { headers })
+          if (share?.collabToken) {
+            token = share.collabToken
+            await db.collabDocs.update(id, { collabToken: token }).catch(() => {})
+          } else {
+            clog('useCollabNote: no token issued (requiresAccount?)', share?.requiresAccount)
+          }
+        } catch (err) {
+          clog('useCollabNote: token re-mint failed', err?.message)
+        }
+      }
+
       try {
         const { connectCollabNetwork, loadCollabDoc } = await import('~/utils/collab.js')
-        if (mapping.collabToken) {
+        if (token) {
           clog('useCollabNote: connecting network', collabWsUrl())
-          await connectCollabNetwork(collabWsUrl(), mapping.collabToken)
+          await connectCollabNetwork(collabWsUrl(), token)
         }
         clog('useCollabNote: loading document…')
         const handle = await loadCollabDoc(mapping.automergeUrl)

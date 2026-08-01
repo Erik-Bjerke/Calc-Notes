@@ -80,6 +80,11 @@ const EXPECTED_DEFAULTS = {
   updateCheckInterval: 30,
   // Features
   binEnabled: true,
+  // Window controls (Electron)
+  windowControlClose: true,
+  windowControlMinimize: true,
+  windowControlMaximize: true,
+  windowControlPosition: 'left',
 }
 
 describe('Default Preferences', () => {

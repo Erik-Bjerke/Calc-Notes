@@ -73,7 +73,7 @@ export const useAuth = () => {
     token.value = row.value
     try {
       user.value = await apiFetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${row.value}` }
+        headers: { Authorization: `Bearer ${row.value}` },
       })
       // Restore encKey from IndexedDB (survives refresh)
       encKey.value = await _restoreEncKey()
@@ -87,6 +87,7 @@ export const useAuth = () => {
         await db.appState.delete('auth_token')
         // Clear notes so revoked sessions don't leave data behind
         await db.notes.clear()
+        await db.collabDocs.clear()
         await db.appState.bulkDelete(['deleted_note_ids', 'deleted_group_ids', 'last_synced_at'])
         wasSessionInvalid.value = true
       } else {
@@ -104,7 +105,7 @@ export const useAuth = () => {
       const authKeyHex = await deriveAuthKey(password)
       const data = await apiFetch('/api/auth/register', {
         method: 'POST',
-        body: { email, authKey: authKeyHex, name }
+        body: { email, authKey: authKeyHex, name },
       })
       await _saveToken(data.token)
       user.value = data.user
@@ -126,7 +127,7 @@ export const useAuth = () => {
       const authKeyHex = await deriveAuthKey(password)
       const data = await apiFetch('/api/auth/login', {
         method: 'POST',
-        body: { email, authKey: authKeyHex }
+        body: { email, authKey: authKeyHex },
       })
       await _saveToken(data.token)
       user.value = data.user
@@ -147,9 +148,11 @@ export const useAuth = () => {
       try {
         await apiFetch('/api/auth/logout', {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token.value}` }
+          headers: { Authorization: `Bearer ${token.value}` },
         })
-      } catch { /* ignore — token may already be invalid */ }
+      } catch {
+        /* ignore — token may already be invalid */
+      }
     }
     token.value = null
     user.value = null
@@ -164,7 +167,7 @@ export const useAuth = () => {
       const data = await apiFetch('/api/auth/profile', {
         method: 'PUT',
         headers: authHeaders.value,
-        body: { name, email, avatarUrl }
+        body: { name, email, avatarUrl },
       })
       user.value = { ...user.value, ...data }
       return data
@@ -212,8 +215,8 @@ export const useAuth = () => {
         body: {
           currentAuthKey: oldAuthKey,
           newAuthKey,
-          reEncryptedNotes
-        }
+          reEncryptedNotes,
+        },
       })
 
       // Invalidate session — force re-login
@@ -234,7 +237,7 @@ export const useAuth = () => {
       const data = await apiFetch('/api/auth/delete', {
         method: 'POST',
         headers: authHeaders.value,
-        body: { type, authKey: authKeyHex }
+        body: { type, authKey: authKeyHex },
       })
       if (type === 'account') await logout()
       return data
@@ -250,7 +253,9 @@ export const useAuth = () => {
     if (!token.value) return
     try {
       user.value = await apiFetch('/api/auth/me', { headers: authHeaders.value })
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   /** Send (or re-send) email verification OTP */
@@ -260,7 +265,7 @@ export const useAuth = () => {
     try {
       await apiFetch('/api/auth/send-verification', {
         method: 'POST',
-        headers: authHeaders.value
+        headers: authHeaders.value,
       })
     } catch (err) {
       error.value = err.data?.statusMessage || err.message || 'Failed to send verification email'
@@ -278,7 +283,7 @@ export const useAuth = () => {
       await apiFetch('/api/auth/verify-email', {
         method: 'POST',
         headers: authHeaders.value,
-        body: { code }
+        body: { code },
       })
       if (user.value) user.value = { ...user.value, emailVerified: true }
     } catch (err) {
@@ -296,7 +301,7 @@ export const useAuth = () => {
     try {
       await apiFetch('/api/auth/forgot-password', {
         method: 'POST',
-        body: { email }
+        body: { email },
       })
     } catch (err) {
       error.value = err.data?.statusMessage || err.message || 'Failed to send recovery email'
@@ -313,7 +318,7 @@ export const useAuth = () => {
     try {
       const data = await apiFetch('/api/auth/verify-recovery', {
         method: 'POST',
-        body: { email, code }
+        body: { email, code },
       })
       return data.recoveryToken
     } catch (err) {
@@ -332,7 +337,7 @@ export const useAuth = () => {
       const newAuthKey = await deriveAuthKey(newPassword)
       const data = await apiFetch('/api/auth/reset-password', {
         method: 'POST',
-        body: { recoveryToken, newAuthKey }
+        body: { recoveryToken, newAuthKey },
       })
       await _saveToken(data.token)
       user.value = data.user
@@ -355,7 +360,7 @@ export const useAuth = () => {
       await apiFetch('/api/auth/security', {
         method: 'PUT',
         headers: authHeaders.value,
-        body: { passwordRecoveryEnabled: enabled }
+        body: { passwordRecoveryEnabled: enabled },
       })
       if (user.value) user.value = { ...user.value, passwordRecoveryEnabled: enabled }
     } catch (err) {
@@ -369,11 +374,27 @@ export const useAuth = () => {
   onMounted(() => restore())
 
   return {
-    user, token, loading, error, isLoggedIn, authHeaders, encKey, wasSessionInvalid,
-    register, login, logout, restore,
-    updateProfile, changePassword, requestDeletion, refreshUser,
-    sendVerification, verifyEmail,
-    forgotPassword, verifyRecovery, resetPassword,
-    setPasswordRecovery
+    user,
+    token,
+    loading,
+    error,
+    isLoggedIn,
+    authHeaders,
+    encKey,
+    wasSessionInvalid,
+    register,
+    login,
+    logout,
+    restore,
+    updateProfile,
+    changePassword,
+    requestDeletion,
+    refreshUser,
+    sendVerification,
+    verifyEmail,
+    forgotPassword,
+    verifyRecovery,
+    resetPassword,
+    setPasswordRecovery,
   }
 }

@@ -12,7 +12,8 @@
  *   - If encKey is null (session restored without password), sync is skipped.
  */
 import db from '~/db.js'
-import { encryptNote, decryptNote } from '~/utils/crypto.js'
+import { encryptNote, decryptNote, encrypt, decrypt } from '~/utils/crypto.js'
+import { encodeCollabLinkage, decodeCollabLinkage } from '~/utils/collabLinkage.js'
 
 export const useSync = (
   auth,
@@ -104,6 +105,17 @@ export const useSync = (
           updatedAt: n.updatedAt,
         }
         const encrypted = await encryptNote(plain, key)
+        // Attach the collaborative linkage (hash + automergeUrl), E2E-encrypted,
+        // so a collaborative note's binding follows the account to other devices.
+        // The capability token is intentionally NOT synced — it is re-minted per
+        // device from the hash when the editor binds.
+        try {
+          const mapping = await db.collabDocs.get(n.id)
+          const collab = await encodeCollabLinkage(mapping, (s) => encrypt(s, key))
+          if (collab) encrypted.collab = collab
+        } catch {
+          /* collabDocs unavailable — skip linkage, note still syncs */
+        }
         encryptedClientNotes.push(encrypted)
       }
 
@@ -153,6 +165,28 @@ export const useSync = (
 
         // Skip re-adding the welcome note we just removed
         if (removedWelcomeNoteId && localId === removedWelcomeNoteId) continue
+
+        // Recreate the collaborative linkage locally when a pulled note carries
+        // one and this device has no mapping yet (e.g. a fresh device). The
+        // token is left null — useCollabNote re-mints it from the hash on bind.
+        if (remote.collab) {
+          try {
+            const existingMapping = await db.collabDocs.get(localId)
+            if (!existingMapping) {
+              const linkage = await decodeCollabLinkage(remote.collab, (s) => decrypt(s, key))
+              if (linkage) {
+                await db.collabDocs.put({
+                  noteId: localId,
+                  hash: linkage.hash,
+                  automergeUrl: linkage.automergeUrl,
+                  collabToken: null,
+                })
+              }
+            }
+          } catch {
+            /* malformed linkage or collabDocs unavailable — ignore */
+          }
+        }
 
         const existing = notes.value.find((n) => n.id === localId)
         if (existing) {

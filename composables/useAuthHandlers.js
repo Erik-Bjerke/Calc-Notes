@@ -17,7 +17,11 @@ export function useAuthHandlers({
   const showEmailVerificationModal = ref(false)
   const showProfileModal = ref(false)
 
-  /** Clear all local notes from IndexedDB — called on logout, password change, account deletion. */
+  /**
+   * Clear all local data from IndexedDB — called on logout, password change,
+   * account deletion. Includes the collabDocs linkage table so collaborative
+   * bindings never leak across accounts on a shared device.
+   */
   const clearLocalData = async () => {
     auth.logout()
     notes.value = []
@@ -25,6 +29,7 @@ export function useAuthHandlers({
     groups.value = []
     await db.notes.clear()
     await db.groups.clear()
+    await db.collabDocs.clear()
     await db.appState.delete('deleted_note_ids')
     await db.appState.delete('deleted_group_ids')
   }
@@ -74,6 +79,7 @@ export function useAuthHandlers({
       groups.value = []
       await db.notes.clear()
       await db.groups.clear()
+      await db.collabDocs.clear()
       await db.appState.delete('deleted_note_ids')
       await db.appState.delete('deleted_group_ids')
     } catch {
@@ -146,6 +152,7 @@ export function useAuthHandlers({
       await auth.requestDeletion('data', password)
       await db.notes.clear()
       await db.groups.clear()
+      await db.collabDocs.clear()
       await db.appState.bulkDelete(['deleted_note_ids', 'deleted_group_ids', 'last_synced_at'])
       lastSyncedAt.value = null
       await auth.refreshUser()

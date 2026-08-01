@@ -313,6 +313,17 @@ export async function migrate() {
     END $do$
   `)
 
+  // Add collab linkage to notes. Holds an E2E-encrypted JSON blob
+  // ({ hash, automergeUrl }) so a collaborative note's binding follows the
+  // account and reaches other devices. Opaque to the server; collab tokens are
+  // never stored here — each device re-mints them from the share hash.
+  await query(`
+    DO $do$ BEGIN
+      ALTER TABLE notes ADD COLUMN IF NOT EXISTS collab TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $do$
+  `)
+
   // Groups table for note grouping
   await query(`
     CREATE TABLE IF NOT EXISTS groups (

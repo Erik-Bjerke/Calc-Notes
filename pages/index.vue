@@ -369,8 +369,8 @@ const welcomeWizard = useWelcomeWizard()
 // Bind the editor to a note's collaborative CRDT document when it has been
 // shared for real-time editing (owner side). collabHandle is null for normal
 // notes, in which case the editor behaves exactly as before.
-const { collabHandle } = useCollabNote(currentNote)
 const auth = useAuth()
+const { collabHandle } = useCollabNote(currentNote, auth)
 const { apiFetch } = useApi()
 const toast = useToast()
 const appLock = useAppLock()
@@ -398,7 +398,7 @@ watch(() => auth.wasSessionInvalid.value, (invalid) => {
 _onDataWipe = async () => {
   notes.value = []; currentNoteId.value = null; deletedIds.value = []
   deletedGroupIds.value = []; groups.value = []
-  await db.notes.clear(); await db.groups.clear()
+  await db.notes.clear(); await db.groups.clear(); await db.collabDocs.clear()
   await db.appState.bulkDelete(['deleted_note_ids', 'deleted_group_ids', 'last_synced_at'])
   lastSyncedAt.value = null; await auth.refreshUser()
 }
@@ -407,7 +407,7 @@ _onSessionRevoked = async () => {
   auth.user.value = null; auth.token.value = null; auth.encKey.value = null
   notes.value = []; currentNoteId.value = null; deletedIds.value = []
   deletedGroupIds.value = []; groups.value = []; lastSyncedAt.value = null
-  await db.notes.clear(); await db.groups.clear()
+  await db.notes.clear(); await db.groups.clear(); await db.collabDocs.clear()
   await db.appState.bulkDelete(['auth_token', 'enc_key', 'deleted_note_ids', 'deleted_group_ids', 'last_synced_at'])
 }
 
@@ -591,7 +591,7 @@ watch(() => auth.isLoggedIn.value, async (loggedIn, wasLoggedIn) => {
     if (wasLoggedIn) {
       notes.value = []; currentNoteId.value = null; deletedIds.value = []
       deletedGroupIds.value = []; groups.value = []
-      await db.notes.clear(); await db.groups.clear()
+      await db.notes.clear(); await db.groups.clear(); await db.collabDocs.clear()
       await db.appState.bulkDelete(['deleted_note_ids', 'deleted_group_ids', 'last_synced_at'])
       lastSyncedAt.value = null
     }
