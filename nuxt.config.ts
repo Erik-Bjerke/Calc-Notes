@@ -92,6 +92,7 @@ export default defineNuxtConfig({
         'mdi:account-group',
         'mdi:account-group-outline',
         'mdi:account-lock-outline',
+        'mdi:download-outline',
         'mdi:account-outline',
         'mdi:account-remove-outline',
         'mdi:alert-circle',

@@ -20,20 +20,9 @@
         <span
           class="text-xs text-gray-500 dark:text-gray-500 absolute left-1/2 -translate-x-1/2 flex items-center gap-1"
         >
-          <template v-if="collabHandle">
-            <span class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-            Live collaboration
-            <span v-if="participants.length" class="flex items-center -space-x-1 ml-1">
-              <span
-                v-for="p in participants.slice(0, 5)"
-                :key="p.id"
-                :title="p.name"
-                class="w-4 h-4 rounded-full border border-white dark:border-gray-900 flex items-center justify-center text-[8px] text-white font-medium"
-                :style="{ backgroundColor: p.color }"
-              >
-                {{ (p.name || '?').charAt(0).toUpperCase() }}
-              </span>
-            </span>
+          <template v-if="isCollaborative">
+            <Icon name="mdi:account-group-outline" class="w-3.5 h-3.5" />
+            Collaborative note
           </template>
           <template v-else>Shared Note</template>
         </span>
@@ -180,18 +169,42 @@
         <main
           class="h-full flex flex-col max-w-5xl mx-auto w-full bg-white dark:bg-gray-925 relative z-0 shared-editor-shadow"
         >
+          <div
+            v-if="isCollaborative"
+            class="flex-shrink-0 px-4 sm:px-6 py-3 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800/50"
+          >
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div class="flex-1 min-w-0 text-sm text-amber-800 dark:text-amber-200">
+                <p class="font-medium flex items-center gap-1.5">
+                  <Icon name="mdi:account-group-outline" class="w-4 h-4" />
+                  This is a collaborative note
+                </p>
+                <p class="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
+                  Import it to edit together in real time. Collaborative notes are stored on the
+                  server and are <strong>not end-to-end encrypted</strong> — don't put secrets in
+                  them.
+                </p>
+              </div>
+              <UiButton
+                color="primary"
+                variant="solid"
+                :loading="importing"
+                class="flex-shrink-0"
+                @click="importNote"
+              >
+                <Icon name="mdi:download-outline" class="w-4 h-4" />
+                Import &amp; collaborate
+              </UiButton>
+            </div>
+          </div>
           <NoteEditor
-            :key="collabHandle ? 'collab' : 'static'"
             :content="note.content"
-            :collab-handle="collabHandle"
-            :presence="collabHandle ? { name: displayName } : null"
-            :editable="!!collabHandle"
+            :editable="false"
             :show-inline="resultsPosition !== 'off'"
             :inline-align="resultsPosition === 'off' ? 'left' : resultsPosition"
             :markdown-mode="renderMarkdown ? 'full' : 'off'"
             :bordered="false"
             placeholder=""
-            @presence-update="onPresenceUpdate"
           />
         </main>
       </div>
@@ -212,26 +225,24 @@
 
 <script setup>
 import { deriveShareKey, decryptSharedNote, isEncrypted } from '~/utils/crypto.js'
-import { connectCollabNetwork, loadCollabDoc } from '~/utils/collab.js'
+// collab imports removed — the shared page is a read-only landing, not an editor
 
 const route = useRoute()
 const hash = route.params.hash
 const { apiFetch } = useApi()
-const { collabWsUrl } = useCollabConfig()
+// (collab WS config not needed here — no inline connection)
 
 const note = ref(null)
 const loading = ref(true)
 const error = ref(null)
 
-// Collaborative editing state
-const collabHandle = ref(null)
+// Collaborative state. The shared page is a read-only landing: it shows a
+// preview and lets the visitor IMPORT the note to collaborate in their own
+// library. It never edits or connects to the sync service inline.
+const isCollaborative = ref(false)
+const collabInfo = ref(null) // { automergeUrl, collabToken }
 const needsAccount = ref(false)
-const participants = ref([])
-// A friendly display name for presence/cursors (guests get a generated one).
-const displayName = ref(`Guest ${Math.floor(1000 + Math.random() * 9000)}`)
-const onPresenceUpdate = (list) => {
-  participants.value = list
-}
+const importing = ref(false)
 
 // Encryption state
 const rawEncryptedData = ref(null)
@@ -310,16 +321,16 @@ onMounted(async () => {
   try {
     const data = await apiFetch(`/api/share/${hash}`)
 
-    // Collaborative shares: connect to the sync service and open the live doc.
+    // Collaborative shares: this page is a read-only landing. Show the preview
+    // snapshot and let the visitor import the note to collaborate in their own
+    // library — we do NOT connect to the sync service or edit inline here.
     if (data.mode === 'collaborative') {
+      note.value = { ...data, content: data.content || '' }
       if (data.requiresAccount || !data.collabToken || !data.automergeUrl) {
         needsAccount.value = true
-        note.value = { ...data, content: data.content || '' }
       } else {
-        await connectCollabNetwork(collabWsUrl(), data.collabToken)
-        const h = await loadCollabDoc(data.automergeUrl)
-        collabHandle.value = h
-        note.value = { ...data, content: h.doc()?.text ?? data.content ?? '' }
+        isCollaborative.value = true
+        collabInfo.value = { automergeUrl: data.automergeUrl, collabToken: data.collabToken }
       }
       return
     }
@@ -379,6 +390,7 @@ const decryptWithPassword = async () => {
 
 const importNote = async () => {
   if (!note.value) return
+  importing.value = true
   apiFetch(`/api/share/${hash}/import`, { method: 'POST' }).catch(() => {})
   const { default: db } = await import('~/db.js')
   const pending = {
@@ -386,6 +398,16 @@ const importNote = async () => {
     description: note.value.description || '',
     tags: note.value.tags || [],
     content: note.value.content,
+  }
+  // For a collaborative share, attach the link details so the main app creates
+  // a note bound to the shared Automerge document — the imported note then
+  // stays collaborative in the user's library.
+  if (isCollaborative.value && collabInfo.value) {
+    pending.collab = {
+      hash,
+      automergeUrl: collabInfo.value.automergeUrl,
+      collabToken: collabInfo.value.collabToken,
+    }
   }
   await db.appState.put({ key: 'pending_import', value: JSON.stringify(pending) })
   navigateTo('/')

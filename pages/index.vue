@@ -167,6 +167,13 @@
             </UiButton>
           </div>
 
+          <div
+            v-if="collabHandle"
+            class="flex-shrink-0 flex items-center gap-1.5 px-4 py-1.5 text-xs bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300"
+          >
+            <Icon name="mdi:account-group-outline" class="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Collaborative — synced live, visible to the server (not end-to-end encrypted)</span>
+          </div>
           <div class="flex-1 min-h-0 relative">
             <NoteEditor
               ref="editorRef"
@@ -654,6 +661,17 @@ onMounted(async () => {
       const newNote = createNote()
       updateNoteMeta(newNote.id, { title: data.title, description: data.description, tags: data.tags })
       updateNoteContent(newNote.id, data.content)
+      // Collaborative import: link this note to the shared Automerge document so
+      // it stays collaborative in the library (useCollabNote binds the editor).
+      if (data.collab?.automergeUrl) {
+        await db.collabDocs.put({
+          noteId: newNote.id,
+          hash: data.collab.hash || null,
+          automergeUrl: data.collab.automergeUrl,
+          collabToken: data.collab.collabToken || null,
+        })
+        currentNoteId.value = newNote.id
+      }
     } catch { /* ignore bad data */ }
   }
 })
