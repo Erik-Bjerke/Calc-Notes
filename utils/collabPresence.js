@@ -64,6 +64,40 @@ export function presenceReducer(state, { senderId, message, now = Date.now() }) 
   return next
 }
 
+/**
+ * Compute per-viewer display names for a participants map.
+ *
+ * Participants whose raw name is `Anonymous` (or missing) are numbered by
+ * ascending senderId so numbering is deterministic for a given peer set. A lone
+ * anonymous participant stays a bare `Anonymous`; two or more become
+ * `Anonymous 1`, `Anonymous 2`, … Named participants pass through unchanged.
+ *
+ * Numbering is per-viewer (presence only tracks remote peers, not the local
+ * user), so a given number may map to different people from different viewers —
+ * accepted trade-off to avoid a coordinated wire protocol.
+ *
+ * @param {Record<string, object>} participants keyed by senderId
+ * @returns {Record<string, object>} new map (input is not mutated)
+ */
+export function withDisplayNames(participants) {
+  const anonIds = Object.entries(participants)
+    .filter(([, p]) => (p.name || 'Anonymous') === 'Anonymous')
+    .map(([id]) => id)
+    .sort()
+  const numbered = anonIds.length > 1
+  const anonNumber = {}
+  anonIds.forEach((id, i) => {
+    anonNumber[id] = i + 1
+  })
+  const out = {}
+  for (const [id, p] of Object.entries(participants)) {
+    const isAnon = (p.name || 'Anonymous') === 'Anonymous'
+    const name = isAnon ? (numbered ? `Anonymous ${anonNumber[id]}` : 'Anonymous') : p.name
+    out[id] = { ...p, name }
+  }
+  return out
+}
+
 /** Drop participants whose last update is older than the TTL. */
 export function pruneStale(state, now = Date.now(), ttl = PRESENCE_TTL_MS) {
   const next = {}
@@ -232,12 +266,13 @@ export function collabPresenceExtension({ handle, name, color, onParticipants, t
       }
 
       refresh() {
-        this.decorations = buildPresenceDecorations(this.participants, this.view.state.doc.length)
+        const displayed = withDisplayNames(this.participants)
+        this.decorations = buildPresenceDecorations(displayed, this.view.state.doc.length)
         // Force a redraw outside of a user transaction.
         this.view.dispatch({})
         if (onParticipants) {
           onParticipants(
-            Object.values(this.participants).map((p) => ({
+            Object.values(displayed).map((p) => ({
               id: p.senderId,
               name: p.name,
               color: p.color,

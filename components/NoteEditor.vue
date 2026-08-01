@@ -327,11 +327,8 @@ const buildEditable = () =>
 const buildCollabExtensions = () => {
   if (!props.collabHandle) return []
   try {
-    console.warn('[collab] NoteEditor: building automergeSyncPlugin for', props.collabHandle.url)
     const exts = [automergeSyncPlugin({ handle: props.collabHandle, path: ['text'] })]
-    console.warn('[collab] NoteEditor: automergeSyncPlugin OK')
     if (props.presence) {
-      console.warn('[collab] NoteEditor: building presence extension')
       exts.push(
         collabPresenceTheme,
         collabPresenceExtension({
@@ -341,7 +338,6 @@ const buildCollabExtensions = () => {
           onParticipants: (list) => emit('presence-update', list),
         }),
       )
-      console.warn('[collab] NoteEditor: presence extension OK')
     }
     return exts
   } catch (err) {

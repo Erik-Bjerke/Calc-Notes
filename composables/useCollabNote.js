@@ -34,15 +34,15 @@ export function useCollabNote(noteRef) {
         return
       }
       if (!mapping?.automergeUrl) return
-      console.warn('[collab] useCollabNote: note', id, 'is collaborative →', mapping.automergeUrl)
+      clog('useCollabNote: note', id, 'is collaborative →', mapping.automergeUrl)
 
       try {
         const { connectCollabNetwork, loadCollabDoc } = await import('~/utils/collab.js')
         if (mapping.collabToken) {
-          console.warn('[collab] useCollabNote: connecting network', collabWsUrl())
+          clog('useCollabNote: connecting network', collabWsUrl())
           await connectCollabNetwork(collabWsUrl(), mapping.collabToken)
         }
-        console.warn('[collab] useCollabNote: loading document…')
+        clog('useCollabNote: loading document…')
         const handle = await loadCollabDoc(mapping.automergeUrl)
         // Guard against the user having switched notes while we loaded.
         if (noteRef.value?.id === id) {
@@ -50,9 +50,9 @@ export function useCollabNote(noteRef) {
           // which throw "object is not the right class" if accessed through a
           // Vue reactive Proxy. Keep the handle raw.
           collabHandle.value = markRaw(handle)
-          console.warn('[collab] useCollabNote: collabHandle set, editor will bind')
+          clog('useCollabNote: collabHandle set, editor will bind')
         } else {
-          console.warn('[collab] useCollabNote: note changed while loading, discarding handle')
+          clog('useCollabNote: note changed while loading, discarding handle')
         }
       } catch (err) {
         // Offline or the document isn't reachable yet — fall back to the plain

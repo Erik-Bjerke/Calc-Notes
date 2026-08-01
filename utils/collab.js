@@ -32,12 +32,10 @@ import { IndexedDBStorageAdapter } from '@automerge/automerge-repo-storage-index
 import { WebSocketClientAdapter } from '@automerge/automerge-repo-network-websocket'
 import * as A from '@automerge/automerge/slim'
 import { initAutomerge } from './automerge.js'
+import { clog } from './collabLog.js'
 
 /** IndexedDB database name for locally-persisted Automerge documents. */
 export const AUTOMERGE_DB_NAME = 'numori-automerge'
-
-/** Diagnostic logger — visible in the browser console as "[collab] …". */
-const clog = (...args) => console.warn('[collab]', ...args)
 
 let repoPromise = null
 let networkAdapter = null

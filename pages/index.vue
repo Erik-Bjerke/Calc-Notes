@@ -181,7 +181,7 @@
               :content="currentNote.content"
               :note-id="currentNote.id"
               :collab-handle="collabHandle"
-              :presence="collabHandle ? { name: auth.user.value?.name || 'You' } : null"
+              :presence="collabHandle ? { name: auth.user.value?.name || 'Anonymous' } : null"
               :editable="!currentNoteReadOnly"
               :show-inline="showInlineResults !== 'off'"
               :inline-align="showInlineResults === 'off' ? 'left' : showInlineResults"

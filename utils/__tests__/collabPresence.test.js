@@ -4,6 +4,7 @@ import {
   pruneStale,
   clampPos,
   colorForKey,
+  withDisplayNames,
   PRESENCE_TTL_MS,
 } from '../collabPresence.js'
 
@@ -97,5 +98,60 @@ describe('colorForKey', () => {
   it('is deterministic and returns a hex colour', () => {
     expect(colorForKey('peer-1')).toBe(colorForKey('peer-1'))
     expect(colorForKey('peer-1')).toMatch(/^#[0-9a-f]{6}$/i)
+  })
+})
+
+describe('withDisplayNames', () => {
+  it('leaves a lone anonymous participant as a bare "Anonymous"', () => {
+    const out = withDisplayNames({
+      'peer-1': { senderId: 'peer-1', name: 'Anonymous', color: '#000' },
+    })
+    expect(out['peer-1'].name).toBe('Anonymous')
+  })
+
+  it('numbers 2+ anonymous participants by ascending senderId', () => {
+    const out = withDisplayNames({
+      'peer-b': { senderId: 'peer-b', name: 'Anonymous' },
+      'peer-a': { senderId: 'peer-a', name: 'Anonymous' },
+    })
+    expect(out['peer-a'].name).toBe('Anonymous 1')
+    expect(out['peer-b'].name).toBe('Anonymous 2')
+  })
+
+  it('treats a missing name as anonymous', () => {
+    const out = withDisplayNames({
+      'peer-a': { senderId: 'peer-a' },
+      'peer-b': { senderId: 'peer-b', name: 'Anonymous' },
+    })
+    expect(out['peer-a'].name).toBe('Anonymous 1')
+    expect(out['peer-b'].name).toBe('Anonymous 2')
+  })
+
+  it('passes named participants through and only numbers the anonymous ones', () => {
+    const out = withDisplayNames({
+      'peer-1': { senderId: 'peer-1', name: 'Ada' },
+      'peer-a': { senderId: 'peer-a', name: 'Anonymous' },
+      'peer-b': { senderId: 'peer-b', name: 'Anonymous' },
+    })
+    expect(out['peer-1'].name).toBe('Ada')
+    expect(out['peer-a'].name).toBe('Anonymous 1')
+    expect(out['peer-b'].name).toBe('Anonymous 2')
+  })
+
+  it('does not mutate the input map', () => {
+    const input = {
+      'peer-a': { senderId: 'peer-a', name: 'Anonymous' },
+      'peer-b': { senderId: 'peer-b', name: 'Anonymous' },
+    }
+    withDisplayNames(input)
+    expect(input['peer-a'].name).toBe('Anonymous')
+    expect(input['peer-b'].name).toBe('Anonymous')
+  })
+
+  it('preserves other participant fields (color, anchor, head)', () => {
+    const out = withDisplayNames({
+      'peer-a': { senderId: 'peer-a', name: 'Anonymous', color: '#abc', anchor: 3, head: 7 },
+    })
+    expect(out['peer-a']).toMatchObject({ color: '#abc', anchor: 3, head: 7 })
   })
 })
