@@ -11,8 +11,29 @@
         </UiButton>
       </div>
 
+      <!-- Shared-with-you notes can't be re-shared — duplicate first -->
+      <div v-if="isImported" class="space-y-4 text-center py-2">
+        <Icon name="mdi:account-arrow-left-outline" class="w-12 h-12 text-gray-400 mx-auto" />
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-200">
+          This note was shared with you
+        </h3>
+        <p class="text-sm text-gray-500 dark:text-gray-500">
+          You can't share a note that was shared with you. Duplicate it to create your own copy,
+          then share that.
+        </p>
+        <div class="flex gap-2">
+          <UiButton variant="solid" color="gray" class="flex-1" @click="$emit('close')">
+            Close
+          </UiButton>
+          <UiButton variant="solid" color="primary" class="flex-1" @click="$emit('duplicate')">
+            <Icon name="mdi:content-copy" class="w-4 h-4" />
+            Duplicate to share
+          </UiButton>
+        </div>
+      </div>
+
       <!-- Already shared / just shared state -->
-      <div v-if="activeHash" class="space-y-3">
+      <div v-else-if="activeHash" class="space-y-3">
         <p class="text-sm text-gray-700 dark:text-gray-400">
           <template v-if="shareMode === 'collaborative'">
             Your note is shared for collaborative editing. Anyone with this link can edit it in real
@@ -534,9 +555,12 @@ const props = defineProps({
   userEmail: { type: String, default: '' },
   authHeaders: { type: Object, default: () => ({}) },
   existingHash: { type: String, default: null },
+  // True when this note was shared with the user (imported). Such notes can't
+  // be re-shared — the user must duplicate first and share the copy.
+  isImported: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['close', 'unshare', 'open-analytics', 'collab-changed'])
+const emit = defineEmits(['close', 'unshare', 'open-analytics', 'collab-changed', 'duplicate'])
 
 const { copy: clipboardCopy } = useClipboard()
 const { apiFetch, apiUrl } = useApi()

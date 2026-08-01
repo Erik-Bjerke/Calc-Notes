@@ -139,7 +139,7 @@
               variant="outline"
               color="primary"
               class="flex-shrink-0"
-              @click="duplicateReadOnlyNote"
+              @click="duplicateNote"
             >
               <Icon name="mdi:content-copy" class="w-4 h-4" />
               Duplicate
@@ -320,8 +320,10 @@
       :user-name="auth.user.value?.name || ''" :user-email="auth.user.value?.email || ''"
       :auth-headers="auth.authHeaders.value"
       :existing-hash="currentNote ? shareManagement.sharedNotesMap.value.get(currentNote.id) || null : null"
+      :is-imported="currentNote ? importedNoteIds.has(currentNote.id) : false"
       @close="shareManagement.handleShareModalClose" @unshare="onShareModalUnshare"
       @open-analytics="shareManagement.handleOpenAnalytics" @collab-changed="refreshCollab"
+      @duplicate="duplicateNote"
     />
 
     <ShareAnalyticsModal :is-open="shareManagement.showAnalyticsModal.value" :hash="shareManagement.analyticsHash.value" :auth-headers="auth.authHeaders.value" @close="shareManagement.showAnalyticsModal.value = false" />
@@ -699,7 +701,10 @@ onMounted(async () => {
   // Restore read-only markers for previously imported read-only shares.
   try {
     const imported = await db.importedShares.toArray()
-    for (const r of imported) if (r.readOnly) readOnlyNoteIds.value.add(r.noteId)
+    for (const r of imported) {
+      importedNoteIds.value.add(r.noteId)
+      if (r.readOnly) readOnlyNoteIds.value.add(r.noteId)
+    }
   } catch {
     /* table unavailable */
   }
@@ -715,6 +720,7 @@ onMounted(async () => {
       if (data.sourceHash) {
         const prior = await db.importedShares.get(data.sourceHash).catch(() => null)
         if (prior?.noteId && notes.value.some((n) => n.id === prior.noteId)) {
+          importedNoteIds.value.add(prior.noteId)
           if (prior.readOnly) readOnlyNoteIds.value.add(prior.noteId)
           currentNoteId.value = prior.noteId
           return
@@ -744,8 +750,10 @@ onMounted(async () => {
       // Read-only import: mark the copy view-only until the user duplicates it.
       if (data.readOnly) readOnlyNoteIds.value.add(newNote.id)
 
-      // Record the import so future opens of the same link dedup to this note.
+      // Record the import so future opens of the same link dedup to this note,
+      // and so it can't be re-shared (must be duplicated first).
       if (data.sourceHash) {
+        importedNoteIds.value.add(newNote.id)
         await db.importedShares
           .put({ hash: data.sourceHash, noteId: newNote.id, readOnly: !!data.readOnly })
           .catch(() => {})
@@ -827,6 +835,10 @@ const openEditModal = (id) => { currentNoteId.value = id; showMetaModal.value = 
 // by the importedShares table; loaded once on mount into a reactive Set.
 const readOnlyNoteIds = ref(new Set())
 
+// Notes that were shared with this user (imported from any share). They can't
+// be re-shared — the user must duplicate first and share the independent copy.
+const importedNoteIds = ref(new Set())
+
 // Archived and binned notes are read-only — the user must unarchive/restore
 // first. Read-only share imports are also view-only (duplicate to edit).
 const currentNoteReadOnly = computed(() => {
@@ -840,9 +852,10 @@ const isImportedReadOnly = computed(() => {
   return !!n && !n.archived && !n.deletedAt && readOnlyNoteIds.value.has(n.id)
 })
 
-// Duplicate a read-only imported note into a fresh, independent, editable note
-// owned by this user (a brand-new note — not linked to the original share).
-const duplicateReadOnlyNote = () => {
+// Duplicate the current note into a fresh, independent, editable note owned by
+// this user (a brand-new note — not linked to any share). Used both to edit a
+// read-only import and to re-share a note that was shared with you.
+const duplicateNote = () => {
   const n = currentNote.value
   if (!n) return
   const copy = createNote()
