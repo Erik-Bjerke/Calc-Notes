@@ -46,7 +46,10 @@ export function useCollabNote(noteRef) {
         const handle = await loadCollabDoc(mapping.automergeUrl)
         // Guard against the user having switched notes while we loaded.
         if (noteRef.value?.id === id) {
-          collabHandle.value = handle
+          // markRaw is essential: a DocHandle uses private class fields (#…),
+          // which throw "object is not the right class" if accessed through a
+          // Vue reactive Proxy. Keep the handle raw.
+          collabHandle.value = markRaw(handle)
           console.warn('[collab] useCollabNote: collabHandle set, editor will bind')
         } else {
           console.warn('[collab] useCollabNote: note changed while loading, discarding handle')

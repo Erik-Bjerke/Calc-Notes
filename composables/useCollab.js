@@ -34,7 +34,9 @@ export function useCollab() {
 
   const attach = (h) => {
     detach()
-    handle.value = h
+    // markRaw: DocHandle uses private class fields that break under a Vue
+    // reactive Proxy ("object is not the right class"). Store it raw.
+    handle.value = markRaw(h)
     text.value = getDocText(h)
     changeHandler = () => {
       text.value = getDocText(h)

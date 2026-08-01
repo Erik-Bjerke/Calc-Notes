@@ -42,7 +42,9 @@ export function useCollabSession() {
         // Attach the sync connection (gated by the capability token), then open
         // the document — it syncs down from the service on first join.
         await connectCollabNetwork(collabWsUrl(), data.collabToken)
-        handle.value = await loadCollabDoc(data.automergeUrl)
+        // markRaw: keep the DocHandle raw — its private class fields break
+        // under a Vue reactive Proxy.
+        handle.value = markRaw(await loadCollabDoc(data.automergeUrl))
       }
       return { data }
     } catch (e) {
