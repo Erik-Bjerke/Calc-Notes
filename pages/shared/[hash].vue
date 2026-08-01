@@ -244,6 +244,22 @@ const collabInfo = ref(null) // { automergeUrl, collabToken }
 const needsAccount = ref(false)
 const importing = ref(false)
 
+// Collaborative shares are not encrypted, so `tags` arrives as the raw stored
+// value — a JSON string like '["a","b"]'. Normalize it to an array so the app
+// (and the imported note) always has an array to work with.
+const normalizeTags = (t) => {
+  if (Array.isArray(t)) return t
+  if (typeof t === 'string' && t.trim()) {
+    try {
+      const parsed = JSON.parse(t)
+      return Array.isArray(parsed) ? parsed : [t]
+    } catch {
+      return [t]
+    }
+  }
+  return []
+}
+
 // Encryption state
 const rawEncryptedData = ref(null)
 const needsPassword = ref(false)
@@ -325,7 +341,7 @@ onMounted(async () => {
     // snapshot and let the visitor import the note to collaborate in their own
     // library — we do NOT connect to the sync service or edit inline here.
     if (data.mode === 'collaborative') {
-      note.value = { ...data, content: data.content || '' }
+      note.value = { ...data, tags: normalizeTags(data.tags), content: data.content || '' }
       if (data.requiresAccount || !data.collabToken || !data.automergeUrl) {
         needsAccount.value = true
       } else {

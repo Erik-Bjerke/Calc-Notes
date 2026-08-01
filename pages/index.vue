@@ -659,7 +659,11 @@ onMounted(async () => {
     try {
       const data = JSON.parse(row.value)
       const newNote = createNote()
-      updateNoteMeta(newNote.id, { title: data.title, description: data.description, tags: data.tags })
+      updateNoteMeta(newNote.id, {
+        title: data.title,
+        description: data.description,
+        tags: Array.isArray(data.tags) ? data.tags : [],
+      })
       updateNoteContent(newNote.id, data.content)
       // Collaborative import: link this note to the shared Automerge document so
       // it stays collaborative in the library (useCollabNote binds the editor).
