@@ -318,6 +318,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     appVersion: process.env.npm_package_version || '0.0.0',
     public: {
+      // Baked at build time — logged on boot so you can confirm which build is
+      // actually live (helps verify a deploy actually rebuilt the app).
+      buildTime: new Date().toISOString(),
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '',
       // WebSocket URL of the collaborative sync service. When empty, the client
       // derives it from the API base / current origin (see useCollabConfig).
