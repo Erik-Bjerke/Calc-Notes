@@ -34,20 +34,27 @@ export function useCollabNote(noteRef) {
         return
       }
       if (!mapping?.automergeUrl) return
+      console.warn('[collab] useCollabNote: note', id, 'is collaborative →', mapping.automergeUrl)
 
       try {
         const { connectCollabNetwork, loadCollabDoc } = await import('~/utils/collab.js')
         if (mapping.collabToken) {
+          console.warn('[collab] useCollabNote: connecting network', collabWsUrl())
           await connectCollabNetwork(collabWsUrl(), mapping.collabToken)
         }
+        console.warn('[collab] useCollabNote: loading document…')
         const handle = await loadCollabDoc(mapping.automergeUrl)
         // Guard against the user having switched notes while we loaded.
         if (noteRef.value?.id === id) {
           collabHandle.value = handle
+          console.warn('[collab] useCollabNote: collabHandle set, editor will bind')
+        } else {
+          console.warn('[collab] useCollabNote: note changed while loading, discarding handle')
         }
-      } catch {
+      } catch (err) {
         // Offline or the document isn't reachable yet — fall back to the plain
         // (last-synced) content; the editor stays usable and will bind later.
+        console.error('[collab] useCollabNote: FAILED to bind collaborative document:', err)
       }
     },
     { immediate: true },

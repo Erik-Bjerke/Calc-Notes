@@ -106,7 +106,7 @@ export const useNotes = () => {
   const allTags = computed(() => {
     const tagSet = new Set()
     notes.value.forEach((n) => {
-      if (!n.deletedAt && n.tags) n.tags.forEach((t) => tagSet.add(t))
+      if (!n.deletedAt && Array.isArray(n.tags)) n.tags.forEach((t) => tagSet.add(t))
     })
     return [...tagSet].sort()
   })

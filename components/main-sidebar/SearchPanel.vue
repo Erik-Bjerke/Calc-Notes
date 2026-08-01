@@ -240,7 +240,7 @@ const inputRef = ref(null)
 const allTags = computed(() => {
   const set = new Set()
   for (const n of props.notes) {
-    if (!n.deletedAt && n.tags) n.tags.forEach((t) => set.add(t))
+    if (!n.deletedAt && Array.isArray(n.tags)) n.tags.forEach((t) => set.add(t))
   }
   return [...set].sort()
 })

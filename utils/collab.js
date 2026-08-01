@@ -36,15 +36,22 @@ import { initAutomerge } from './automerge.js'
 /** IndexedDB database name for locally-persisted Automerge documents. */
 export const AUTOMERGE_DB_NAME = 'numori-automerge'
 
+/** Diagnostic logger — visible in the browser console as "[collab] …". */
+const clog = (...args) => console.warn('[collab]', ...args)
+
 let repoPromise = null
 let networkAdapter = null
 let connectedUrl = null
 
 async function createRepo() {
+  clog('createRepo: initializing WASM…')
   await initAutomerge()
-  return new Repo({
+  clog('createRepo: WASM ready, constructing Repo with IndexedDB storage')
+  const repo = new Repo({
     storage: new IndexedDBStorageAdapter(AUTOMERGE_DB_NAME),
   })
+  clog('createRepo: Repo constructed, peerId =', repo.peerId)
+  return repo
 }
 
 /**
@@ -90,9 +97,13 @@ export async function createCollabDoc(initialText = '') {
  * @returns {Promise<import('@automerge/automerge-repo').DocHandle<{text:string}>>}
  */
 export async function loadCollabDoc(url) {
+  clog('loadCollabDoc: url =', url)
   const repo = await getRepo()
+  clog('loadCollabDoc: repo ready, calling repo.find()…')
   const handle = await repo.find(url)
+  clog('loadCollabDoc: got handle, state =', handle.state, '— awaiting whenReady()')
   await handle.whenReady()
+  clog('loadCollabDoc: handle READY, text length =', getDocText(handle).length)
   return handle
 }
 
@@ -133,14 +144,21 @@ export async function connectCollabNetwork(url, token) {
   if (!url) {
     throw new Error('Collaboration server URL is not configured')
   }
+  clog('connectCollabNetwork: url =', url, 'token?', !!token)
   const repo = await getRepo()
   const fullUrl = token
     ? `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
     : url
-  if (networkAdapter && connectedUrl === fullUrl) return
+  if (networkAdapter && connectedUrl === fullUrl) {
+    clog('connectCollabNetwork: already connected to', url)
+    return
+  }
+  clog('connectCollabNetwork: creating WebSocketClientAdapter')
   networkAdapter = new WebSocketClientAdapter(fullUrl)
+  clog('connectCollabNetwork: adding adapter to repo.networkSubsystem')
   repo.networkSubsystem.addNetworkAdapter(networkAdapter)
   connectedUrl = fullUrl
+  clog('connectCollabNetwork: adapter attached')
 }
 
 /** Whether a collab network connection has been established this session. */

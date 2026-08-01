@@ -320,6 +320,36 @@ const buildEditable = () =>
   Prec.highest([EditorView.editable.of(props.editable), EditorState.readOnly.of(!props.editable)])
 
 // --- Extensions array ---
+// Build the collaborative CodeMirror extensions (Automerge sync + presence)
+// defensively: if constructing them throws (e.g. a library/instance mismatch),
+// log the exact error and fall back to a plain editor instead of crashing the
+// whole app to a gray screen.
+const buildCollabExtensions = () => {
+  if (!props.collabHandle) return []
+  try {
+    console.warn('[collab] NoteEditor: building automergeSyncPlugin for', props.collabHandle.url)
+    const exts = [automergeSyncPlugin({ handle: props.collabHandle, path: ['text'] })]
+    console.warn('[collab] NoteEditor: automergeSyncPlugin OK')
+    if (props.presence) {
+      console.warn('[collab] NoteEditor: building presence extension')
+      exts.push(
+        collabPresenceTheme,
+        collabPresenceExtension({
+          handle: props.collabHandle,
+          name: props.presence.name,
+          color: props.presence.color,
+          onParticipants: (list) => emit('presence-update', list),
+        }),
+      )
+      console.warn('[collab] NoteEditor: presence extension OK')
+    }
+    return exts
+  } catch (err) {
+    console.error('[collab] NoteEditor: FAILED to build collaborative extensions:', err)
+    return []
+  }
+}
+
 const cmExtensions = computed(() => [
   numoriLanguage,
   themeCompartment.of(colorMode.value === 'dark' ? numoriDarkTheme : numoriLightTheme),
@@ -335,23 +365,8 @@ const cmExtensions = computed(() => [
   editableCompartment.of(buildEditable()),
   inlineResultField,
   mdPreviewField,
-  // Collaborative binding: when a CRDT handle is present, the plugin keeps the
-  // CodeMirror document and the Automerge `text` field in sync bidirectionally.
-  ...(props.collabHandle
-    ? [automergeSyncPlugin({ handle: props.collabHandle, path: ['text'] })]
-    : []),
-  // Live presence: remote carets/selections + local caret broadcast.
-  ...(props.collabHandle && props.presence
-    ? [
-        collabPresenceTheme,
-        collabPresenceExtension({
-          handle: props.collabHandle,
-          name: props.presence.name,
-          color: props.presence.color,
-          onParticipants: (list) => emit('presence-update', list),
-        }),
-      ]
-    : []),
+  // Collaborative binding + live presence (built defensively — see above).
+  ...buildCollabExtensions(),
   buildKeymap(),
   EditorView.updateListener.of((update) => {
     if (update.selectionSet || update.docChanged) {
