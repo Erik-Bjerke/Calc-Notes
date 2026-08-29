@@ -285,6 +285,8 @@ npm run dev                 # http://localhost:3000
 │   │   │       ├── analytics.get.js    # GET  — view analytics
 │   │   │       ├── analytics.delete.js # DELETE — clear analytics
 │   │   │       └── import.post.js      # POST — record import event
+│   │   ├── collab/
+│   │   │   └── authorize.post.js  # POST — may this peer join this document? (asked by numori-crdt)
 │   │   ├── sync/
 │   │   │   └── events.get.js      # GET /api/sync/events — SSE endpoint
 │   │   └── version.get.js         # GET /api/version — app version for update checks
@@ -295,12 +297,15 @@ npm run dev                 # http://localhost:3000
 │   │   └── purge-sessions.js      # Periodic expired session cleanup
 │   └── utils/
 │       ├── auth.js                # JWT sign / verify, requireAuth helper
+│       ├── collabAuthorize.js     # Signature check + who-may-join-this-document decisions
+│       ├── collabRevoke.js        # Disconnect peers via the sync service's admin API
 │       ├── collabToken.js         # Mint / verify collaborative editing capability tokens
 │       ├── db.js                  # PostgreSQL connection pool + query helper
 │       ├── email.js               # Email sending via nodemailer (SMTP)
 │       ├── geo.js                 # Geolocation from request headers
 │       ├── migrate.js             # SQL migration runner
 │       ├── session.js             # Session creation, validation, revocation helpers
+│       ├── shareMembers.js        # share_members table + owned-share lookup
 │       └── syncBroadcast.js       # SSE broadcast to connected clients
 ├── electron/
 │   ├── main.js                    # Electron main process entry
@@ -598,7 +603,8 @@ flowchart LR
 ### Security model
 
 - **Connection auth** — every WebSocket connection must present a valid, unexpired capability token (a JWT signed by the API with the shared `JWT_SECRET`, `purpose: 'collab'`). Tokens are minted per share; guests only receive one when the share allows guest access.
-- **Room access** — Automerge document IDs are unguessable 128-bit identifiers only revealed through a share link, so "knowing the document ID" is the capability to access it — the same posture as the app's share links.
+- **Room access** — the sync service asks this app (`POST /api/collab/authorize`) whether an identity may join a document: once when the peer connects, and again whenever it reaches for a document its token did not name. Decisions come from live `shared_notes` / `share_members` state, so a deleted share, an expired link or a revoked member stops syncing without waiting for token expiry. With no authorization endpoint configured, access falls back to the capability model — Automerge document IDs are unguessable 128-bit identifiers revealed only through a share link, so knowing one is the capability to use it.
+- **Revocation** — peers already connected keep their socket until it is closed, so share changes also call the sync service's admin revoke endpoint (see [Revoking access](#revoking-access)).
 
 ### Running it
 
@@ -661,7 +667,7 @@ Without them the app still works and shares still change; connected peers just k
 
 ## Testing
 
-Tests are colocated alongside their source files in `__tests__/` directories — 860+ tests across 46 test files covering calculator features, composables, server APIs, utilities, and the client side of collaborative editing (CRDT document handling, capability tokens, presence, and share-link flows).
+Tests are colocated alongside their source files in `__tests__/` directories — 890+ tests across 47 test files covering calculator features, composables, server APIs, utilities, and the client side of collaborative editing (CRDT document handling, capability tokens, room authorization, presence, and share-link flows).
 
 ```bash
 npm run test          # single run
@@ -693,7 +699,7 @@ composables/__tests__/              # Composable tests (code highlight, file act
 server/api/auth/__tests__/          # Auth API tests (register, login, password, delete)
 server/api/notes/__tests__/         # Notes API tests (sync, logout safety)
 server/api/share/__tests__/         # Share API tests (create, get, collaborative)
-server/utils/__tests__/             # Server util tests (collab capability tokens)
+server/utils/__tests__/             # Server util tests (collab tokens, room authorization, revocation)
 utils/__tests__/                    # Utility tests (crypto, Automerge, CRDT sync, presence)
 composables/__tests__/              # Composable tests (incl. collab config URL derivation)
 ```
