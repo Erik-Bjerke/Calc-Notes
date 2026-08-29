@@ -616,7 +616,11 @@ cd ../numori-crdt && npm start     # listens on CRDT_PORT (default 3030)
 npm run dev
 ```
 
-In production, reverse-proxy `wss://<host>/collab` to that deployment or set `NUXT_PUBLIC_COLLAB_WS_URL` explicitly. Native (Capacitor) and Electron builds **must** set it (or an `https` `NUXT_PUBLIC_API_BASE`), since their origins can't be turned into a WebSocket URL.
+In production, set `NUXT_PUBLIC_COLLAB_WS_URL` to the service's URL for this app — `wss://<crdt-host>/notes`. The sync service logs that exact URL on startup.
+
+Keeping the web client on a same-origin path also works: reverse-proxy `wss://<host>/collab` to `<crdt-host>/notes`. Rewrite the path rather than passing `/collab` through, because the service selects the app from the first path segment; `/collab` only resolves while `notes` is the sole (and therefore default) app registered there.
+
+Native (Capacitor) and Electron builds **must** set `NUXT_PUBLIC_COLLAB_WS_URL` (or an `https` `NUXT_PUBLIC_API_BASE`), since their origins can't be turned into a WebSocket URL.
 
 To disconnect peers the moment access changes, either give the sync service access to this database and set `"revokeChannel": "collab_revoke"` on the app (`server/utils/collabRevoke.js` already issues the `pg_notify`), or call its admin revoke endpoint. See the numori-crdt README.
 
@@ -738,7 +742,7 @@ docker run -p 3000:3000 numori-notes
 
 The Dockerfile uses a multi-stage build: build stage with full Node.js, production stage with just the `.output` directory running as a non-root user.
 
-For the full stack (app + PostgreSQL + collaborative sync service), use Compose:
+For the full stack (app + PostgreSQL), use Compose:
 
 ```bash
 docker compose up --build
