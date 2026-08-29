@@ -569,7 +569,7 @@ The following items are known trade-offs or areas for future improvement:
 
 ## Collaborative editing
 
-Notes can be shared for **real-time collaborative editing** using [Automerge](https://automerge.org/) CRDTs. Multiple people — the owner across several devices, other registered users, and optional guests without an account — can edit the same note's body simultaneously, with live remote cursors and a participant list. Concurrent edits merge conflict-free; only the note **body** becomes a CRDT, while metadata (title, tags, groups, ordering) keeps flowing through the existing last-write-wins encrypted sync.
+Notes can be shared for **real-time collaborative editing** using [Automerge](https://automerge.org/) CRDTs. Multiple people — the owner across several devices, other registered users, and optional guests without an account — can edit the same note's body simultaneously, with live remote cursors and a participant list. Concurrent edits merge conflict-free; only the note **body** becomes a CRDT, while metadata (title, tags, groups, ordering) flows through the last-write-wins encrypted sync.
 
 ### Architecture
 
@@ -592,17 +592,17 @@ flowchart LR
 ```
 
 - **Client** — `utils/collab.js` owns a single `automerge-repo` `Repo` backed by IndexedDB (so collaborative docs work offline and survive reloads). The WASM core is inlined as base64 and lazy-loaded, so it never affects normal startup and works under the `capacitor://` and `app://` (Electron) origins where fetching a separate `.wasm` asset would fail. The CodeMirror editor binds to the document via `@automerge/automerge-codemirror`.
-- **Sync service** — [numori-crdt](../numori-crdt), a separate deployment. It relays Automerge's compact sync-protocol deltas between peers and persists documents to PostgreSQL. Keeping it out of this repo means the realtime workload scales independently of the REST API, and one deployment can serve several apps: this app registers there as `notes`, so clients connect to `wss://<crdt-host>/notes`. Idle rooms are evicted from memory but remain durable, keeping memory bounded.
-- **Sharing** — a share is either **read-only** (the existing static, E2E-encrypted snapshot) or **collaborative**. Collaborative content is _not_ end-to-end encrypted, because the sync service must read it to merge edits.
+- **Sync service** — [numori-crdt](../numori-crdt), its own deployment. It relays Automerge's compact sync-protocol deltas between peers and persists documents to PostgreSQL. Running it separately lets the realtime workload scale independently of the REST API, and one deployment serves several apps: this app registers there as `notes`, so clients connect to `wss://<crdt-host>/notes`. Idle rooms are evicted from memory but remain durable, keeping memory bounded.
+- **Sharing** — a share is either **read-only** (a static, E2E-encrypted snapshot) or **collaborative**. Collaborative content is _not_ end-to-end encrypted, because the sync service must read it to merge edits.
 
 ### Security model
 
 - **Connection auth** — every WebSocket connection must present a valid, unexpired capability token (a JWT signed by the API with the shared `JWT_SECRET`, `purpose: 'collab'`). Tokens are minted per share; guests only receive one when the share allows guest access.
-- **Room access** — Automerge document IDs are unguessable 128-bit identifiers only revealed through a share link, so "knowing the document ID" is the capability to access it — the same posture as the app's existing share links.
+- **Room access** — Automerge document IDs are unguessable 128-bit identifiers only revealed through a share link, so "knowing the document ID" is the capability to access it — the same posture as the app's share links.
 
 ### Running it
 
-The sync service lives in its own repository, [numori-crdt](../numori-crdt). Register this app there as `notes` with the same `JWT_SECRET` this API signs with, and it will verify the capability tokens minted here unchanged.
+The sync service lives in its own repository, [numori-crdt](../numori-crdt). Register this app there as `notes` with the same `JWT_SECRET` this API signs with, so it can verify the capability tokens this API mints.
 
 ```bash
 # 1. Start Postgres for this app's API
@@ -622,7 +622,7 @@ Keeping the web client on a same-origin path also works: reverse-proxy `wss://<h
 
 Native (Capacitor) and Electron builds **must** set `NUXT_PUBLIC_COLLAB_WS_URL` (or an `https` `NUXT_PUBLIC_API_BASE`), since their origins can't be turned into a WebSocket URL.
 
-To disconnect peers the moment access changes, either give the sync service access to this database and set `"revokeChannel": "collab_revoke"` on the app (`server/utils/collabRevoke.js` already issues the `pg_notify`), or call its admin revoke endpoint. See the numori-crdt README.
+To disconnect peers the moment access changes, either give the sync service access to this database and set `"revokeChannel": "collab_revoke"` on the app (`server/utils/collabRevoke.js` issues the matching `pg_notify`), or call its admin revoke endpoint. See the numori-crdt README.
 
 ## Testing
 
