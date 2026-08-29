@@ -8,7 +8,8 @@ import { notifyCollabRevoke } from '../../../../utils/collabRevoke.js'
  *
  * Marks the member 'revoked' (kept for audit and to block re-entry to a private
  * share) rather than hard-deleting. Immediate disconnection of a live session is
- * wired separately via the collab-server revocation signal.
+ * wired separately via the revocation signal the numori-crdt sync service
+ * listens for (see server/utils/collabRevoke.js).
  */
 export default defineEventHandler(async (event) => {
   const auth = await requireAuth(event)

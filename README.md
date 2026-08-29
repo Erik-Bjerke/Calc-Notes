@@ -54,7 +54,6 @@ npm run dev                 # http://localhost:3000
 | `npm run generate`       | Static site generation                          |
 | `npm run test`           | Run all tests once (vitest)                     |
 | `npm run test:watch`     | Run tests in watch mode                         |
-| `npm run collab`         | Start the collaborative editing sync service    |
 
 ## Project structure
 
@@ -303,15 +302,6 @@ npm run dev                 # http://localhost:3000
 │       ├── migrate.js             # SQL migration runner
 │       ├── session.js             # Session creation, validation, revocation helpers
 │       └── syncBroadcast.js       # SSE broadcast to connected clients
-├── collab-server/                 # Standalone Automerge WebSocket sync service
-│   ├── index.mjs                  # CLI entrypoint (reads env, starts the server)
-│   ├── server.mjs                 # createCollabServer — sync + auth + idle eviction
-│   ├── auth.mjs                   # Connection auth + capability-based sharePolicy
-│   ├── jwt.mjs                    # Dependency-free HS256 token verification
-│   ├── db.mjs                     # PostgreSQL pool for the sync service
-│   ├── storage/                   # StorageAdapter over PostgreSQL (collab_chunks)
-│   ├── Dockerfile                 # Small standalone image for the service
-│   └── package.json               # Service dependencies
 ├── electron/
 │   ├── main.js                    # Electron main process entry
 │   └── preload.cjs                # Electron preload script
@@ -590,18 +580,19 @@ flowchart LR
       REPO[automerge-repo + IndexedDB storage]
       CM --> REPO
     end
-    COLLAB[Collab sync service — WebSocket + token auth]
-    PG[(PostgreSQL — collab_chunks + shared_notes)]
+    COLLAB[numori-crdt sync service — WebSocket + token auth]
+    CRDTPG[(PostgreSQL — crdt_chunks)]
+    PG[(PostgreSQL — shared_notes, users, sessions)]
     NITRO[Nitro API — shares, capability tokens, LWW metadata]
 
     REPO <-- WebSocket sync / presence --> COLLAB
-    COLLAB --> PG
+    COLLAB --> CRDTPG
     NITRO --> PG
     A <-- REST: share mgmt, metadata sync --> NITRO
 ```
 
 - **Client** — `utils/collab.js` owns a single `automerge-repo` `Repo` backed by IndexedDB (so collaborative docs work offline and survive reloads). The WASM core is inlined as base64 and lazy-loaded, so it never affects normal startup and works under the `capacitor://` and `app://` (Electron) origins where fetching a separate `.wasm` asset would fail. The CodeMirror editor binds to the document via `@automerge/automerge-codemirror`.
-- **Sync service** (`collab-server/`) — a small standalone Node process, separate from the Nitro API so the realtime workload scales independently. It relays Automerge's compact sync-protocol deltas between peers and persists documents to PostgreSQL. Idle rooms are evicted from memory but remain durable, keeping memory bounded.
+- **Sync service** — [numori-crdt](../numori-crdt), a separate deployment. It relays Automerge's compact sync-protocol deltas between peers and persists documents to PostgreSQL. Keeping it out of this repo means the realtime workload scales independently of the REST API, and one deployment can serve several apps: this app registers there as `notes`, so clients connect to `wss://<crdt-host>/notes`. Idle rooms are evicted from memory but remain durable, keeping memory bounded.
 - **Sharing** — a share is either **read-only** (the existing static, E2E-encrypted snapshot) or **collaborative**. Collaborative content is _not_ end-to-end encrypted, because the sync service must read it to merge edits.
 
 ### Security model
@@ -611,23 +602,27 @@ flowchart LR
 
 ### Running it
 
+The sync service lives in its own repository, [numori-crdt](../numori-crdt). Register this app there as `notes` with the same `JWT_SECRET` this API signs with, and it will verify the capability tokens minted here unchanged.
+
 ```bash
-# 1. Start Postgres (shared with the API)
+# 1. Start Postgres for this app's API
 npm run dev:db
 
-# 2. Start the sync service (reads JWT_SECRET + POSTGRES_* + COLLAB_* from .env)
-npm run collab              # listens on COLLAB_PORT (default 3030)
+# 2. Start the sync service (in the numori-crdt checkout)
+cd ../numori-crdt && npm start     # listens on CRDT_PORT (default 3030)
 
 # 3. Start the app; point it at the service
-#    NUXT_PUBLIC_COLLAB_WS_URL=ws://localhost:3030 in .env
+#    NUXT_PUBLIC_COLLAB_WS_URL=ws://localhost:3030/notes in .env
 npm run dev
 ```
 
-In production the service is a separate container (`collab` in `docker-compose.yml`, built from `collab-server/Dockerfile`). Reverse-proxy `wss://<host>/collab` to it, or set `NUXT_PUBLIC_COLLAB_WS_URL` explicitly. Native (Capacitor) and Electron builds **must** set `NUXT_PUBLIC_COLLAB_WS_URL` (or an `https` `NUXT_PUBLIC_API_BASE`), since their origins can't be turned into a WebSocket URL. See `.env.example` for all `COLLAB_*` variables.
+In production, reverse-proxy `wss://<host>/collab` to that deployment or set `NUXT_PUBLIC_COLLAB_WS_URL` explicitly. Native (Capacitor) and Electron builds **must** set it (or an `https` `NUXT_PUBLIC_API_BASE`), since their origins can't be turned into a WebSocket URL.
+
+To disconnect peers the moment access changes, either give the sync service access to this database and set `"revokeChannel": "collab_revoke"` on the app (`server/utils/collabRevoke.js` already issues the `pg_notify`), or call its admin revoke endpoint. See the numori-crdt README.
 
 ## Testing
 
-Tests are colocated alongside their source files in `__tests__/` directories — 820+ tests across 45 test files covering calculator features, composables, server APIs, utilities, and collaborative editing (CRDT sync, the sync service, auth, presence, and durability).
+Tests are colocated alongside their source files in `__tests__/` directories — 860+ tests across 46 test files covering calculator features, composables, server APIs, utilities, and the client side of collaborative editing (CRDT document handling, capability tokens, presence, and share-link flows).
 
 ```bash
 npm run test          # single run
@@ -662,8 +657,9 @@ server/api/share/__tests__/         # Share API tests (create, get, collaborativ
 server/utils/__tests__/             # Server util tests (collab capability tokens)
 utils/__tests__/                    # Utility tests (crypto, Automerge, CRDT sync, presence)
 composables/__tests__/              # Composable tests (incl. collab config URL derivation)
-collab-server/__tests__/            # Sync service tests (sync, auth, Postgres durability, E2E)
 ```
+
+Tests for the sync service itself live in the [numori-crdt](../numori-crdt) repository.
 
 ### Writing new tests
 
@@ -748,7 +744,7 @@ For the full stack (app + PostgreSQL + collaborative sync service), use Compose:
 docker compose up --build
 ```
 
-This starts three services: `app` (Nitro API + SPA on port 3000), `postgres`, and `collab` (the Automerge sync service on port 3030, built from `collab-server/Dockerfile`). Set `JWT_SECRET`, `POSTGRES_*`, and `NUXT_PUBLIC_COLLAB_WS_URL` in your environment — see `.env.example`.
+This starts two services: `app` (Nitro API + SPA on port 3000) and `postgres`. Set `JWT_SECRET`, `POSTGRES_*`, and `NUXT_PUBLIC_COLLAB_WS_URL` in your environment — see `.env.example`. Collaborative editing additionally needs the [numori-crdt](../numori-crdt) service running and pointed to by `NUXT_PUBLIC_COLLAB_WS_URL`.
 
 ## Deep linking (Android App Links / iOS Universal Links)
 

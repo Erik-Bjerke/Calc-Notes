@@ -12,32 +12,13 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-db}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      # Public WebSocket URL the browser uses to reach the collab sync service.
-      # In production, reverse-proxy this to the `collab` service over wss://.
+      # Public WebSocket URL the browser uses to reach the CRDT sync service.
+      # Real-time collaboration is served by numori-crdt, which is deployed
+      # separately so the realtime workload scales on its own and can be shared
+      # with other apps. Point this at that deployment, e.g.
+      # wss://crdt.example.com/notes, and configure the "notes" app there with
+      # the same JWT_SECRET so it can verify the tokens this API mints.
       NUXT_PUBLIC_COLLAB_WS_URL: ${NUXT_PUBLIC_COLLAB_WS_URL:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # Real-time collaborative editing sync service (Automerge over WebSockets).
-  # Runs separately from the API so the realtime workload scales independently.
-  collab:
-    build:
-      context: .
-      dockerfile: collab-server/Dockerfile
-    container_name: numori-collab
-    restart: unless-stopped
-    ports:
-      - '3030:3030'
-    environment:
-      COLLAB_PORT: 3030
-      COLLAB_STORAGE: postgres
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-db}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
     depends_on:
       postgres:
         condition: service_healthy

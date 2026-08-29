@@ -4,9 +4,9 @@
  * A collab token is a short-lived JWT (HS256, signed with the shared JWT_SECRET)
  * that grants a peer access to ONE collaborative document (room). It is minted
  * by the Nitro API when a user or permitted guest opens a collaborative share,
- * and verified by the standalone collab sync service on the WebSocket upgrade
- * (see collab-server/auth.mjs). Because both services share JWT_SECRET, the
- * sync service can authorize peers without talking to the API or the database.
+ * and verified by the numori-crdt sync service on the WebSocket upgrade. Because
+ * that service is configured with the same JWT_SECRET, it can authorize peers
+ * without talking to this API or the database.
  *
  * Payload:
  *   documentId  the Automerge documentId this token grants access to (room)

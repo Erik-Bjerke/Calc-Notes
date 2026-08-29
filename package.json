@@ -56,8 +56,6 @@
     "dev:phones": "concurrently -n android,ios -c green,yellow \"npm run dev:android\" \"npm run dev:ios\"",
     "dev:db": "docker compose -f docker-compose.dev.yml up -d",
     "dev:db:stop": "docker compose -f docker-compose.dev.yml down",
-    "collab": "node collab-server/index.mjs",
-    "collab:dev": "COLLAB_STORAGE=postgres node collab-server/index.mjs",
     "dev:full": "docker compose -f docker-compose.dev.yml up -d && npm run dev:web",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
