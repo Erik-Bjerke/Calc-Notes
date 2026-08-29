@@ -618,11 +618,46 @@ npm run dev
 
 In production, set `NUXT_PUBLIC_COLLAB_WS_URL` to the service's URL for this app — `wss://<crdt-host>/notes`. The sync service logs that exact URL on startup.
 
-Keeping the web client on a same-origin path also works: reverse-proxy `wss://<host>/collab` to `<crdt-host>/notes`. Rewrite the path rather than passing `/collab` through, because the service selects the app from the first path segment; `/collab` only resolves while `notes` is the sole (and therefore default) app registered there.
+Leaving it empty on the web derives `${origin}/collab/notes` instead, for a same-origin setup. Mount the sync service at `/collab/` and strip that prefix, so `/notes` is what reaches it:
+
+```nginx
+location /collab/ {
+    proxy_pass http://crdt:3030/;   # trailing slash strips the /collab/ prefix
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 3600s;
+}
+```
+
+The trailing app segment is required either way: the service hosts several applications, picks one from the first path segment it receives, and refuses a path naming none of them rather than guessing.
 
 Native (Capacitor) and Electron builds **must** set `NUXT_PUBLIC_COLLAB_WS_URL` (or an `https` `NUXT_PUBLIC_API_BASE`), since their origins can't be turned into a WebSocket URL.
 
-To disconnect peers the moment access changes, either give the sync service access to this database and set `"revokeChannel": "collab_revoke"` on the app (`server/utils/collabRevoke.js` issues the matching `pg_notify`), or call its admin revoke endpoint. See the numori-crdt README.
+### Authorizing collaborators
+
+The sync service does not read `shared_notes` or `share_members` — it asks this app instead, at `POST /api/collab/authorize`. That keeps our schema private and lets one sync deployment serve unrelated apps, while still deciding from live state: a deleted share, an expired link, a revoked member or a guest on a share that no longer allows guests are all refused.
+
+It is called twice over a session's life, distinguished by a `check` field: once as the peer connects (`connection`), and again whenever that peer reaches for a document its token did not name (`room`). The second call matters — one socket can name any number of documents, so without it a member removed from note A could reconnect with a still-valid token for note B and then pull A over that socket.
+
+Requests are HMAC-signed over `timestamp.body`; unsigned, mis-signed or stale requests get a `401`, and the endpoint refuses everything unless `CRDT_WEBHOOK_SECRET` is set:
+
+```bash
+CRDT_WEBHOOK_SECRET=…    # same value as the app's webhookSecretEnv in numori-crdt
+```
+
+A database failure answers `500` rather than `{ allow: false }`, so an outage is never mistaken for a denial — the sync service's own policy (fail closed by default) then decides. The logic lives in `server/utils/collabAuthorize.js`.
+
+### Revoking access
+
+Authorization is re-checked on reconnect, but a peer already connected keeps its socket. So when a share changes — a member kicked, a share deleted, access switched to private — those peers have to be disconnected explicitly. `server/utils/collabRevoke.js` does that through the sync service's admin API, which needs two server-side variables:
+
+```bash
+CRDT_ADMIN_URL=https://crdt.numori.app     # base url of the sync service
+CRDT_ADMIN_SECRET=…                        # its CRDT_ADMIN_SECRET
+```
+
+Without them the app still works and shares still change; connected peers just keep their access until their token expires. The call is best-effort and bounded by a 2s timeout, so a slow or unreachable sync service can never fail or stall the request that changed the share. A missed kick is not an authorization hole, because the service re-runs authorization whenever a peer reconnects.
 
 ## Testing
 

@@ -322,8 +322,9 @@ export default defineNuxtConfig({
       // actually live (helps verify a deploy actually rebuilt the app).
       buildTime: new Date().toISOString(),
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '',
-      // WebSocket URL of the collaborative sync service. When empty, the client
-      // derives it from the API base / current origin (see useCollabConfig).
+      // WebSocket URL of the CRDT sync service, including the app segment
+      // (e.g. wss://crdt.numori.app/notes). When empty, the client derives it
+      // from the API base / current origin (see useCollabConfig).
       collabWsUrl: process.env.NUXT_PUBLIC_COLLAB_WS_URL || '',
       storeAndroid:
         process.env.NUXT_PUBLIC_STORE_ANDROID ||

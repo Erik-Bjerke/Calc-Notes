@@ -15,10 +15,17 @@ services:
       # Public WebSocket URL the browser uses to reach the CRDT sync service.
       # Real-time collaboration is served by numori-crdt, which is deployed
       # separately so the realtime workload scales on its own and can be shared
-      # with other apps. Point this at that deployment, e.g.
-      # wss://crdt.example.com/notes, and configure the "notes" app there with
-      # the same JWT_SECRET so it can verify the tokens this API mints.
+      # with other apps. Point this at that deployment including the app segment,
+      # e.g. wss://crdt.example.com/notes, and configure the "notes" app there
+      # with the same JWT_SECRET so it can verify the tokens this API mints.
       NUXT_PUBLIC_COLLAB_WS_URL: ${NUXT_PUBLIC_COLLAB_WS_URL:-}
+      # Lets this API disconnect connected peers as soon as a share's access
+      # changes, rather than waiting for their tokens to expire.
+      CRDT_ADMIN_URL: ${CRDT_ADMIN_URL:-}
+      CRDT_ADMIN_SECRET: ${CRDT_ADMIN_SECRET:-}
+      # Shared secret for POST /api/collab/authorize, which the sync service
+      # calls to ask whether a peer may join a document.
+      CRDT_WEBHOOK_SECRET: ${CRDT_WEBHOOK_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy
