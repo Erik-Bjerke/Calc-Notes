@@ -5,7 +5,7 @@
         variant="ghost"
         icon-only
         size="sm"
-        class="flex-shrink-0 -ml-2"
+        class="shrink-0 -ml-2"
         :class="
           selectMode
             ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
@@ -33,7 +33,7 @@
         variant="ghost"
         icon-only
         size="sm"
-        class="flex-shrink-0 -mr-2"
+        class="shrink-0 -mr-2"
         :class="
           showTags || selectedTags.length
             ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'

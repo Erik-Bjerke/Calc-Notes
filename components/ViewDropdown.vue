@@ -13,7 +13,7 @@
     </template>
 
     <UiButton variant="menu-item" @click="action('toggle-focus')">
-      <Icon name="mdi:fullscreen" class="w-4 h-4 block flex-shrink-0" />
+      <Icon name="mdi:fullscreen" class="w-4 h-4 block shrink-0" />
       <span class="flex-1 text-left">Focus Mode</span>
       <kbd
         class="ml-auto text-[10px] text-gray-400 dark:text-gray-500 font-mono"
@@ -40,7 +40,7 @@
       </UiButton>
       <UiButton
         :title="zoomPercent === 100 ? 'Zoom at 100%' : 'Reset zoom to 100%'"
-        class="flex-1 text-center text-sm rounded px-1 py-0.5 min-w-0"
+        class="flex-1 text-center text-sm rounded-sm px-1 py-0.5 min-w-0w-0"
         :class="
           zoomPercent === 100
             ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-500 dark:hover:text-gray-400 cursor-default'
@@ -91,7 +91,7 @@
       <Icon
         :key="opt.value + '-' + markdownMode"
         :name="markdownMode === opt.value ? 'mdi:radiobox-marked' : 'mdi:radiobox-blank'"
-        class="w-4 h-4 block flex-shrink-0"
+        class="w-4 h-4 block shrink-0"
       />
       <span>{{ opt.label }}</span>
     </UiButton>
@@ -118,9 +118,9 @@
       <Icon
         :key="opt.value + '-' + inlineMode"
         :name="inlineMode === opt.value ? 'mdi:radiobox-marked' : 'mdi:radiobox-blank'"
-        class="w-4 h-4 block flex-shrink-0"
+        class="w-4 h-4 block shrink-0"
       />
-      <Icon :name="opt.icon" class="w-4 h-4 block flex-shrink-0" />
+      <Icon :name="opt.icon" class="w-4 h-4 block shrink-0" />
       <span>{{ opt.label }}</span>
     </UiButton>
 
@@ -128,7 +128,7 @@
 
     <!-- Theme toggle -->
     <UiButton variant="menu-item" @click="toggleTheme">
-      <Icon name="mdi:theme-light-dark" class="w-4 h-4 block flex-shrink-0" />
+      <Icon name="mdi:theme-light-dark" class="w-4 h-4 block shrink-0" />
       <span class="flex-1 text-left">Theme</span>
       <span
         class="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
@@ -159,7 +159,7 @@
     >
       <Icon
         :name="updateChecking ? 'mdi:loading' : updateResultIcon"
-        class="w-4 h-4 block flex-shrink-0"
+        class="w-4 h-4 block shrink-0"
         :class="{
           'animate-spin': updateChecking,
           [updateResultColor]: !updateChecking && updateResult,

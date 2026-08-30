@@ -62,7 +62,7 @@
           <!-- App icon / lock icon -->
           <div class="flex flex-col items-center gap-4 mb-8">
             <div
-              class="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/20"
+              class="w-20 h-20 rounded-3xl bg-linear-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/20"
             >
               <Icon name="mdi:lock" class="w-9 h-9 text-white" />
             </div>
@@ -86,7 +86,7 @@
                 class="w-3.5 h-3.5 rounded-full transition-all duration-200"
                 :class="[
                   i <= enteredPin.length
-                    ? 'bg-primary-500 dark:bg-primary-400 scale-110 shadow-sm shadow-primary-500/30'
+                    ? 'bg-primary-500 dark:bg-primary-400 scale-110 shadow-xs shadow-primary-500/30'
                     : 'bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600',
                   shake && i <= enteredPin.length ? 'animate-shake' : '',
                 ]"

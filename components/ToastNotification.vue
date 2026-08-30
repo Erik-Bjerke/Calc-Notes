@@ -14,10 +14,10 @@
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium backdrop-blur-sm"
+          class="pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium backdrop-blur-xs"
           :class="toastClass(toast.type)"
         >
-          <Icon v-if="toast.icon" :name="toast.icon" class="w-4 h-4 flex-shrink-0" />
+          <Icon v-if="toast.icon" :name="toast.icon" class="w-4 h-4 shrink-0" />
           <span>{{ toast.message }}</span>
         </div>
       </TransitionGroup>

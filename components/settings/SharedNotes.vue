@@ -12,13 +12,13 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
                 <p class="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">{{ sn.title || 'Untitled' }}</p>
-                <span v-if="!sn.isActive" class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex-shrink-0">unshared</span>
+                <span v-if="!sn.isActive" class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 shrink-0">unshared</span>
               </div>
               <p class="text-xs text-gray-500 dark:text-gray-500 truncate">
                 {{ sn.anonymous ? 'Anonymous' : '' }}{{ sn.anonymous && sn.expiresAt ? ' · ' : '' }}{{ formatExpiry(sn.expiresAt) }}{{ sn.collectAnalytics ? ' · Analytics' : '' }}
               </p>
             </div>
-            <div class="flex items-center gap-0.5 flex-shrink-0">
+            <div class="flex items-center gap-0.5 shrink-0">
               <UiButton v-if="sn.collectAnalytics" variant="ghost" color="primary" size="xs" icon-only title="View analytics" @click="openAnalytics(sn.hash)"><Icon name="mdi:chart-bar" class="w-4 h-4" /></UiButton>
               <UiButton variant="ghost" color="primary" size="xs" icon-only title="Copy link" @click="copySharedLink(sn.hash)"><Icon :name="copiedHash === sn.hash ? 'mdi:check' : 'mdi:content-copy'" class="w-4 h-4" /></UiButton>
               <UiButton variant="ghost" color="red" size="xs" icon-only :disabled="!sn.isActive" :title="sn.isActive ? 'Stop sharing' : 'Already unshared'" @click="handleUnshare(sn.hash)"><Icon name="mdi:link-variant-off" class="w-4 h-4" /></UiButton>

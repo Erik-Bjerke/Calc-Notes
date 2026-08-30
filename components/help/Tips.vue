@@ -5,7 +5,7 @@
 
       <div class="space-y-4">
         <div v-for="(tip, i) in tips" :key="i" class="flex items-start gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50">
-          <div class="flex-shrink-0 w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+          <div class="shrink-0 w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
             <span class="text-xs font-bold text-primary-600 dark:text-primary-400">{{ i + 1 }}</span>
           </div>
           <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{{ tip }}</p>

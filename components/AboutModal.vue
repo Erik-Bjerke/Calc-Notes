@@ -8,7 +8,7 @@
   >
     <!-- Header -->
     <div
-      class="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-200 dark:border-gray-800 flex-shrink-0"
+      class="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-200 dark:border-gray-800 shrink-0"
     >
       <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-400 leading-none">About</h2>
       <UiButton variant="ghost" color="gray" icon-only size="sm" @click="$emit('close')">
@@ -76,7 +76,7 @@
 
       <!-- Donate / Support -->
       <div
-        class="rounded-xl bg-gradient-to-br from-pink-50 to-amber-50 dark:from-pink-900/10 dark:to-amber-900/10 border border-pink-100 dark:border-pink-900/30 overflow-hidden"
+        class="rounded-xl bg-linear-to-br from-pink-50 to-amber-50 dark:from-pink-900/10 dark:to-amber-900/10 border border-pink-100 dark:border-pink-900/30 overflow-hidden"
       >
         <button
           class="w-full flex items-center justify-between p-4 text-left hover:bg-pink-100/40 dark:hover:bg-pink-900/20 transition-colors"
@@ -119,7 +119,7 @@
                 rel="noopener noreferrer"
                 class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-pink-300 dark:hover:border-pink-700 transition-colors"
               >
-                <Icon :name="d.icon" class="w-4 h-4 flex-shrink-0" :class="d.color" />
+                <Icon :name="d.icon" class="w-4 h-4 shrink-0" :class="d.color" />
                 <span class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ d.label }}</span>
               </a>
             </div>
@@ -133,7 +133,7 @@
       >
         <div class="flex items-center gap-3">
           <div
-            class="w-9 h-9 rounded-full bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center ring-1 ring-primary-200/50 dark:ring-primary-700/30 flex-shrink-0"
+            class="w-9 h-9 rounded-full bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center ring-1 ring-primary-200/50 dark:ring-primary-700/30 shrink-0"
           >
             <Icon name="mdi:account" class="w-5 h-5 text-primary-600 dark:text-primary-400" />
           </div>
@@ -141,7 +141,7 @@
             <p class="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">Erik Bjerke</p>
             <p class="text-[11px] text-gray-500 dark:text-gray-500">Creator & Maintainer</p>
           </div>
-          <div class="flex items-center gap-1.5 flex-shrink-0">
+          <div class="flex items-center gap-1.5 shrink-0">
             <a
               href="https://erikbjerke.com"
               target="_blank"
@@ -178,7 +178,7 @@
             :key="contributor.name"
             class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800"
           >
-            <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+            <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
               <Icon name="mdi:account" class="w-4 h-4 text-gray-400" />
             </div>
             <div class="min-w-0 flex-1">
@@ -244,7 +244,7 @@
           </div>
           <Icon
             name="mdi:chevron-down"
-            class="w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0"
+            class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0"
             :class="{ 'rotate-180': showDeps }"
           />
         </button>
@@ -260,14 +260,14 @@
             >
               <Icon
                 name="mdi:package-variant"
-                class="w-3.5 h-3.5 text-gray-300 dark:text-gray-600 mt-0.5 flex-shrink-0 group-hover:text-primary-500 dark:group-hover:text-primary-400 transition-colors"
+                class="w-3.5 h-3.5 text-gray-300 dark:text-gray-600 mt-0.5 shrink-0 group-hover:text-primary-500 dark:group-hover:text-primary-400 transition-colors"
               />
               <div class="flex-1 min-w-0">
                 <div class="flex items-baseline gap-2">
                   <span class="text-xs font-medium text-gray-900 dark:text-gray-200 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
                     {{ dep.name }}
                   </span>
-                  <span class="text-[10px] text-gray-400 dark:text-gray-600 flex-shrink-0">
+                  <span class="text-[10px] text-gray-400 dark:text-gray-600 shrink-0">
                     {{ dep.license }}
                   </span>
                 </div>
@@ -277,7 +277,7 @@
               </div>
               <Icon
                 name="mdi:open-in-new"
-                class="w-3 h-3 text-gray-300 dark:text-gray-600 mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                class="w-3 h-3 text-gray-300 dark:text-gray-600 mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
               />
             </a>
           </div>
@@ -322,7 +322,8 @@ const dependencies = [
   { name: '@nuxt/fonts', url: 'https://fonts.nuxt.com', license: 'MIT', description: 'Automatic font optimization and loading for Nuxt' },
   { name: '@nuxt/icon', url: 'https://nuxt.com/modules/icon', license: 'MIT', description: 'Icon component powered by Iconify with 200k+ icons' },
   { name: '@nuxtjs/color-mode', url: 'https://color-mode.nuxtjs.org', license: 'MIT', description: 'Dark and light mode with auto-detection' },
-  { name: '@nuxtjs/tailwindcss', url: 'https://tailwindcss.nuxtjs.org', license: 'MIT', description: 'Tailwind CSS integration for Nuxt' },
+  { name: 'Tailwind CSS', url: 'https://tailwindcss.com', license: 'MIT', description: 'Utility-first CSS framework' },
+  { name: 'numori-ui', url: 'https://github.com/Numori-Ecosystem/Numori-UI', license: 'AGPL-3.0', description: 'The Numori design system — the Ui* component library' },
   { name: '@tailwindcss/typography', url: 'https://tailwindcss.com/docs/typography-plugin', license: 'MIT', description: 'Beautiful typographic defaults for HTML content' },
   { name: '@vueuse/core', url: 'https://vueuse.org', license: 'MIT', description: 'Collection of essential Vue composition utilities' },
   { name: '@nuxtjs/i18n', url: 'https://i18n.nuxtjs.org', license: 'MIT', description: 'Internationalization and localization module for Nuxt' },

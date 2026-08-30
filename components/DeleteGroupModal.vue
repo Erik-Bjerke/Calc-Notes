@@ -15,7 +15,7 @@
         class="text-left"
         @click="$emit('confirm', 'keep')"
       >
-        <Icon name="mdi:folder-remove-outline" class="w-5 h-5 text-gray-500 flex-shrink-0" />
+        <Icon name="mdi:folder-remove-outline" class="w-5 h-5 text-gray-500 shrink-0" />
         <div>
           <p class="text-sm font-medium text-gray-800 dark:text-gray-300">Delete group only</p>
           <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -32,7 +32,7 @@
         class="text-left"
         @click="showMoveOptions = !showMoveOptions"
       >
-        <Icon name="mdi:folder-swap-outline" class="w-5 h-5 text-primary-500 flex-shrink-0" />
+        <Icon name="mdi:folder-swap-outline" class="w-5 h-5 text-primary-500 shrink-0" />
         <div class="flex-1">
           <p class="text-sm font-medium text-gray-800 dark:text-gray-300">
             Move notes to another group
@@ -41,7 +41,7 @@
         </div>
         <Icon
           :name="showMoveOptions ? 'mdi:chevron-up' : 'mdi:chevron-down'"
-          class="w-4 h-4 text-gray-400 flex-shrink-0"
+          class="w-4 h-4 text-gray-400 shrink-0"
         />
       </UiButton>
 
@@ -55,7 +55,7 @@
           block
           @click="$emit('confirm', 'move', g.id)"
         >
-          <Icon name="mdi:folder-outline" class="w-4 h-4 text-primary-500 flex-shrink-0" />
+          <Icon name="mdi:folder-outline" class="w-4 h-4 text-primary-500 shrink-0" />
           {{ g.name }}
         </UiButton>
       </div>
@@ -67,7 +67,7 @@
         class="text-left"
         @click="$emit('confirm', 'delete-all')"
       >
-        <Icon name="mdi:trash-can-outline" class="w-5 h-5 text-red-500 flex-shrink-0" />
+        <Icon name="mdi:trash-can-outline" class="w-5 h-5 text-red-500 shrink-0" />
         <div>
           <p class="text-sm font-medium text-red-600 dark:text-red-400">
             Delete group and all notes

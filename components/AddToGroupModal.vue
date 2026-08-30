@@ -8,7 +8,7 @@
         class="rounded-lg py-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20"
         @click="$emit('create-new')"
       >
-        <Icon name="mdi:folder-plus-outline" class="w-4.5 h-4.5 flex-shrink-0" />
+        <Icon name="mdi:folder-plus-outline" class="w-4.5 h-4.5 shrink-0" />
         <span class="font-medium">Create new group</span>
       </UiButton>
 
@@ -35,14 +35,14 @@
           >
             <Icon
               name="mdi:folder-outline"
-              class="w-4.5 h-4.5 flex-shrink-0"
+              class="w-4.5 h-4.5 shrink-0"
               :class="currentGroupId === group.id ? 'text-primary-500' : 'text-gray-400'"
             />
             <span class="truncate">{{ group.name }}</span>
             <Icon
               v-if="currentGroupId === group.id"
               name="mdi:check"
-              class="w-4 h-4 ml-auto text-primary-500 flex-shrink-0"
+              class="w-4 h-4 ml-auto text-primary-500 shrink-0"
             />
           </UiButton>
         </div>
@@ -57,7 +57,7 @@
           class="rounded-lg py-2"
           @click="$emit('select', null)"
         >
-          <Icon name="mdi:folder-remove-outline" class="w-4.5 h-4.5 flex-shrink-0" />
+          <Icon name="mdi:folder-remove-outline" class="w-4.5 h-4.5 shrink-0" />
           <span>Remove from group</span>
         </UiButton>
       </template>

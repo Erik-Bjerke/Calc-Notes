@@ -32,7 +32,7 @@
           color="gray"
           size="sm"
           icon-only
-          class="flex-shrink-0"
+          class="shrink-0"
           :title="allSelected ? 'Deselect All' : 'Select All'"
           @click="$emit('toggle-select-all')"
         >
@@ -110,7 +110,7 @@
             size="sm"
             icon-only
             :disabled="selectedCount === 0"
-            class="flex-shrink-0"
+            class="shrink-0"
             title="Delete"
             @click="$emit('bulk-delete')"
           >

@@ -13,11 +13,11 @@
     <!-- Select-mode checkbox -->
     <div
       v-if="selectMode"
-      class="flex-shrink-0 mr-1 flex items-center justify-center"
+      class="shrink-0 mr-1 flex items-center justify-center"
       @click.stop="$emit('toggle-select', group.id)"
     >
       <div
-        class="w-4 h-4 rounded border-2 flex items-center justify-center transition-colors"
+        class="w-4 h-4 rounded-sm border-2 flex items-center justify-center transition-colors"
         :class="
           selected ? 'bg-primary-600 border-primary-600' : 'border-gray-300 dark:border-gray-600'
         "
@@ -29,13 +29,13 @@
     <!-- Twisty (always toggles collapse, even in select mode) -->
     <Icon
       :name="group.collapsed ? 'mdi:chevron-right' : 'mdi:chevron-down'"
-      class="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400"
+      class="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400"
       @click.stop="$emit('toggle-collapse', group.id)"
     />
     <!-- Folder icon -->
     <Icon
       :name="group.collapsed ? 'mdi:folder-outline' : 'mdi:folder-open-outline'"
-      class="w-4 h-4 flex-shrink-0 mr-1.5 text-primary-500 dark:text-primary-400"
+      class="w-4 h-4 shrink-0 mr-1.5 text-primary-500 dark:text-primary-400"
     />
     <!-- Label -->
     <span class="flex-1 min-w-0 truncate text-[13px] font-medium leading-none">
@@ -46,7 +46,7 @@
     <div
       v-if="!selectMode && !binMode"
       ref="menuRef"
-      class="relative flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+      class="relative shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
       :class="{ 'opacity-100': menuOpen }"
       tabindex="-1"
       @focusout="onFocusOut"

@@ -1,0 +1,40 @@
+/**
+ * Numori Notes — global stylesheet (Tailwind CSS v4 entry).
+ *
+ * Tailwind 4 is loaded as a Vite plugin (see nuxt.config.ts), so this file is
+ * the single CSS entry point. The design tokens come from numori-ui, which also
+ * ships the class-based `dark` custom variant and the `@source` declarations for
+ * its own components — Tailwind would otherwise skip node_modules and the UI
+ * components would render unstyled.
+ */
+@import 'tailwindcss';
+@import 'numori-ui/css';
+
+@plugin '@tailwindcss/typography';
+
+/*
+ * Tailwind v4 changed the default border and divide colour from `gray-200` to
+ * `currentColor`. This app's templates were written against the v3 default, so
+ * any bare `border` / `divide` (no colour utility) would otherwise pick up the
+ * text colour. Restore the previous behaviour project-wide. `--color-gray-200`
+ * is the Numori warm neutral (#e8e6e3), defined by numori-ui/css.
+ */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+
+  /*
+   * Tailwind v4's Preflight no longer sets `cursor: pointer` on buttons (native
+   * <button> now uses the browser default). This app was built expecting the
+   * pointer, so restore it for enabled buttons and role="button" elements.
+   */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+}

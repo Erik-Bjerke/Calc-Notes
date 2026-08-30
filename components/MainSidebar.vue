@@ -3,7 +3,7 @@
     <!-- Selection Toolbar / Header — crossfade in a fixed container.
          In select mode the area expands (animated) to fit the taller toolbar. -->
     <div
-      class="relative border-b border-gray-200 dark:border-gray-800 flex-shrink-0 overflow-hidden transition-[padding] duration-200 ease-out"
+      class="relative border-b border-gray-200 dark:border-gray-800 shrink-0 overflow-hidden transition-[padding] duration-200 ease-out"
       :class="{ 'pb-14': selectMode }"
     >
       <!-- Select toolbar -->

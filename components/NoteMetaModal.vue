@@ -104,7 +104,7 @@
         </div>
         <div v-if="props.shared && props.shareHash" class="flex items-center gap-2 mt-2">
           <UiInput :model-value="shareUrl" readonly :validate="false" />
-          <UiButton icon-only size="sm" class="flex-shrink-0" @click="copyShareLink">
+          <UiButton icon-only size="sm" class="shrink-0" @click="copyShareLink">
             <Icon :name="copiedLink ? 'mdi:check' : 'mdi:content-copy'" class="w-3.5 h-3.5 block" />
           </UiButton>
         </div>

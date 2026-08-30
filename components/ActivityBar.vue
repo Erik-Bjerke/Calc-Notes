@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="flex flex-col items-center w-12 flex-shrink-0 bg-gray-100 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800"
+    class="flex flex-col items-center w-12 shrink-0 bg-gray-100 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800"
     :style="{ paddingTop: 'env(safe-area-inset-top, 0px)' }"
   >
     <!-- Top actions (e.g. New Note) -->

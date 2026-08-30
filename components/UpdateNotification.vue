@@ -34,14 +34,14 @@
       <template v-if="!isNative">
         <Icon
           name="mdi:update"
-          class="w-5 h-5 flex-shrink-0 text-primary-600 dark:text-primary-400"
+          class="w-5 h-5 shrink-0 text-primary-600 dark:text-primary-400"
         />
         <p class="text-sm text-gray-700 dark:text-gray-300 flex-1">A new version is available.</p>
         <UiButton
           variant="solid"
           color="primary"
           size="xs"
-          class="flex-shrink-0"
+          class="shrink-0"
           @click="$emit('apply')"
         >
           Reload

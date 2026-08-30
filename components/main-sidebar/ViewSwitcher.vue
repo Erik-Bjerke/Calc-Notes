@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 px-3 py-2"
+    class="shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 px-3 py-2"
   >
     <UiButtonsGroup
       :model-value="sidebarView"

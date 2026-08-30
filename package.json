@@ -92,8 +92,6 @@
     "@nuxt/icon": "^2.4.1",
     "@nuxtjs/color-mode": "^4.0.1",
     "@nuxtjs/i18n": "^10.6.0",
-    "@nuxtjs/tailwindcss": "^6.14.0",
-    "@tailwindcss/typography": "^0.5.20",
     "@vueuse/core": "^14.4.0",
     "@vueuse/nuxt": "^14.4.0",
     "@zip.js/zip.js": "^2.8.34",
@@ -105,6 +103,7 @@
     "nodemailer": "^9.0.3",
     "nuxt": "^4.5.1",
     "nuxt-codemirror": "^0.0.20",
+    "numori-ui": "^0.1.0",
     "pg": "^8.22.0",
     "tailwind-merge": "^3.6.0",
     "vue": "^3.5.40",
@@ -115,6 +114,8 @@
     "@capacitor/cli": "^8.4.2",
     "@iconify-json/mdi": "^1.2.3",
     "@nuxt/eslint": "^1.16.0",
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.1.2",
     "concurrently": "^10.0.4",
     "electron": "^43.2.0",
@@ -126,6 +127,7 @@
     "lint-staged": "^17.3.0",
     "patch-package": "^8.0.1",
     "prettier": "^3.9.6",
+    "tailwindcss": "^4.3.3",
     "vitest": "^4.1.10"
   }
 }

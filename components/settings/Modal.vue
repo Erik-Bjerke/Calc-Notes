@@ -10,7 +10,7 @@
     <div class="flex flex-col h-full">
       <!-- Header -->
       <div
-        class="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 flex-shrink-0"
+        class="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 shrink-0"
       >
         <div class="flex items-center gap-2">
           <UiButton
@@ -37,9 +37,9 @@
         <!-- Sidebar navigation -->
         <nav
           v-show="!isMobile || (!activeSection && transitionState !== 'leaving')"
-          class="flex-shrink-0 w-full md:w-60 h-full bg-gray-50 dark:bg-gray-900 md:border-r border-gray-200 dark:border-gray-800 flex flex-col"
+          class="shrink-0 w-full md:w-60 h-full bg-gray-50 dark:bg-gray-900 md:border-r border-gray-200 dark:border-gray-800 flex flex-col"
         >
-          <div class="p-3 pb-2 flex-shrink-0">
+          <div class="p-3 pb-2 shrink-0">
             <UiInput
               v-model="searchQuery"
               placeholder="Search settings..."
@@ -64,7 +64,7 @@
                   "
                   @click="selectSection(section.id)"
                 >
-                  <Icon :name="section.icon" class="w-5 h-5 flex-shrink-0 opacity-70" />
+                  <Icon :name="section.icon" class="w-5 h-5 shrink-0 opacity-70" />
                   <div class="min-w-0">
                     <span class="block truncate">{{ section.label }}</span>
                     <span class="block text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">

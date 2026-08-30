@@ -10,7 +10,7 @@
             <button v-for="(_preset, name) in presets" :key="name" type="button"
               class="flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl text-xs font-medium border-2 transition-all"
               :class="activePreset === name
-                ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-400 dark:border-primary-500 text-primary-700 dark:text-primary-400 shadow-sm'
+                ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-400 dark:border-primary-500 text-primary-700 dark:text-primary-400 shadow-xs'
                 : 'bg-gray-50 dark:bg-gray-800/60 border-transparent hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400'"
               @click="selectPreset(name)">
               <span class="text-lg leading-none">{{ presetEmojis[name] }}</span>

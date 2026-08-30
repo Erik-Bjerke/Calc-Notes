@@ -1,7 +1,7 @@
 <template>
   <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
     <!-- Header -->
-    <div class="p-3 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 space-y-2">
+    <div class="p-3 border-b border-gray-200 dark:border-gray-800 shrink-0 space-y-2">
       <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
         Search
       </div>
@@ -35,7 +35,7 @@
           variant="ghost"
           icon-only
           size="sm"
-          class="flex-shrink-0"
+          class="shrink-0"
           :class="
             showTags || selectedTags.length
               ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
@@ -50,7 +50,7 @@
           variant="ghost"
           icon-only
           size="sm"
-          class="flex-shrink-0"
+          class="shrink-0"
           :class="
             showFilters || hasActiveFilters
               ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
@@ -76,7 +76,7 @@
         leave-from-class="opacity-100 translate-y-0 max-h-40"
         leave-to-class="opacity-0 -translate-y-1 max-h-0"
       >
-        <div v-if="showFilters" class="rounded-lg bg-white dark:bg-gray-800 p-2.5 space-y-2 shadow-sm">
+        <div v-if="showFilters" class="rounded-lg bg-white dark:bg-gray-800 p-2.5 space-y-2 shadow-xs">
           <UiSelect
             :model-value="filters.dateRange"
             size="xs"
@@ -204,7 +204,7 @@
           <div class="flex items-center gap-1.5 min-w-0">
             <Icon
               name="mdi:file-document-outline"
-              class="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500"
+              class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500"
             />
             <span class="truncate text-[13px] text-gray-800 dark:text-gray-200">
               {{ note.title || 'Untitled' }}

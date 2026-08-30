@@ -43,7 +43,7 @@
         </p>
         <div class="flex items-center gap-2">
           <UiInput :model-value="activeShareUrl" readonly :validate="false" />
-          <UiButton icon-only class="flex-shrink-0" @click="copyLink">
+          <UiButton icon-only class="shrink-0" @click="copyLink">
             <Icon :name="copied ? 'mdi:check' : 'mdi:content-copy'" class="w-4 h-4 block" />
           </UiButton>
         </div>
@@ -345,7 +345,7 @@
                 :key="email"
                 class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-400"
               >
-                <Icon name="mdi:account-outline" class="w-4 h-4 flex-shrink-0" />
+                <Icon name="mdi:account-outline" class="w-4 h-4 shrink-0" />
                 <span class="flex-1 truncate">{{ email }}</span>
                 <UiButton
                   icon-only

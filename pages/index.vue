@@ -8,7 +8,7 @@
     />
 
     <div
-      class="transition-all duration-300 ease-in-out flex-shrink-0 relative z-30"
+      class="transition-all duration-300 ease-in-out shrink-0 relative z-30"
       :class="focusMode ? 'max-h-0 overflow-hidden opacity-0' : 'max-h-40 opacity-100'"
     >
       <AppHeader
@@ -62,7 +62,7 @@
 
     <div class="flex-1 flex overflow-hidden">
       <aside
-        class="flex-shrink-0 hidden lg:block transition-all duration-300 ease-in-out relative z-20 overflow-hidden"
+        class="shrink-0 hidden lg:block transition-all duration-300 ease-in-out relative z-20 overflow-hidden"
         :class="
           !focusMode && showSidebar
             ? (sidebarPanelOpen ? 'w-[368px]' : 'w-12') +
@@ -123,22 +123,22 @@
         class="flex-1 overflow-hidden flex flex-col isolate transition-[padding] duration-300 relative"
         :style="focusMode ? { paddingTop: 'env(safe-area-inset-top, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' } : {}"
       >
-        <div class="absolute top-0 left-0 right-0 h-3 z-10 pointer-events-none bg-gradient-to-b from-black/[0.06] to-transparent dark:from-black/[0.25]" />
+        <div class="absolute top-0 left-0 right-0 h-3 z-10 pointer-events-none bg-linear-to-b from-black/[0.06] to-transparent dark:from-black/[0.25]" />
         <template v-if="currentNote">
           <!-- Read-only notice for imported read-only shares -->
           <div
             v-if="isImportedReadOnly"
-            class="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b text-sm bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800/40 text-sky-700 dark:text-sky-300"
+            class="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b text-sm bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800/40 text-sky-700 dark:text-sky-300"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <Icon name="mdi:eye-outline" class="w-4 h-4 flex-shrink-0" />
+              <Icon name="mdi:eye-outline" class="w-4 h-4 shrink-0" />
               <span class="truncate">This is a read-only shared note. Duplicate it to edit.</span>
             </div>
             <UiButton
               size="sm"
               variant="outline"
               color="primary"
-              class="flex-shrink-0"
+              class="shrink-0"
               @click="duplicateNote"
             >
               <Icon name="mdi:content-copy" class="w-4 h-4" />
@@ -149,7 +149,7 @@
           <!-- Read-only notice for archived / binned notes -->
           <div
             v-if="currentNoteReadOnly && !isImportedReadOnly"
-            class="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b text-sm"
+            class="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b text-sm"
             :class="
               currentNote.deletedAt
                 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300'
@@ -159,7 +159,7 @@
             <div class="flex items-center gap-2 min-w-0">
               <Icon
                 :name="currentNote.deletedAt ? 'mdi:delete-outline' : 'mdi:archive-outline'"
-                class="w-4 h-4 flex-shrink-0"
+                class="w-4 h-4 shrink-0"
               />
               <span class="truncate">
                 {{
@@ -173,7 +173,7 @@
               size="sm"
               variant="outline"
               :color="currentNote.deletedAt ? 'red' : 'gray'"
-              class="flex-shrink-0"
+              class="shrink-0"
               @click="
                 currentNote.deletedAt
                   ? handleRestoreNote(currentNote.id)
@@ -190,9 +190,9 @@
 
           <div
             v-if="collabHandle"
-            class="flex-shrink-0 flex items-center gap-1.5 px-4 py-1.5 text-xs bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300"
+            class="shrink-0 flex items-center gap-1.5 px-4 py-1.5 text-xs bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300"
           >
-            <Icon name="mdi:account-group-outline" class="w-3.5 h-3.5 flex-shrink-0" />
+            <Icon name="mdi:account-group-outline" class="w-3.5 h-3.5 shrink-0" />
             <span>Collaborative — synced live, visible to the server (not end-to-end encrypted)</span>
           </div>
           <div class="flex-1 min-h-0 relative">

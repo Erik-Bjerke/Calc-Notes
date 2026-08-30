@@ -26,7 +26,7 @@
     <div class="space-y-2">
       <!-- Zoom -->
       <div class="flex items-center gap-2">
-        <Icon name="mdi:magnify-minus-outline" class="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <Icon name="mdi:magnify-minus-outline" class="w-4 h-4 text-gray-400 shrink-0" />
         <UiSlider
           v-model="scale"
           :min="minScale"
@@ -35,7 +35,7 @@
           width="flex"
           @input="draw"
         />
-        <Icon name="mdi:magnify-plus-outline" class="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <Icon name="mdi:magnify-plus-outline" class="w-4 h-4 text-gray-400 shrink-0" />
         <UiInput
           type="number"
           :model-value="scaleDisplay"
@@ -44,16 +44,16 @@
           :step="1"
           stepper-layout="stacked-right"
           :validate="false"
-          class="!w-16 flex-shrink-0 text-center"
+          class="!w-16 shrink-0 text-center"
           @update:model-value="onScaleInput"
         />
       </div>
 
       <!-- Rotate -->
       <div class="flex items-center gap-2">
-        <Icon name="mdi:rotate-left" class="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <Icon name="mdi:rotate-left" class="w-4 h-4 text-gray-400 shrink-0" />
         <UiSlider v-model="rotation" :min="-180" :max="180" :step="1" width="flex" @input="draw" />
-        <Icon name="mdi:rotate-right" class="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <Icon name="mdi:rotate-right" class="w-4 h-4 text-gray-400 shrink-0" />
         <UiInput
           type="number"
           :model-value="rotation"
@@ -62,7 +62,7 @@
           :step="1"
           stepper-layout="stacked-right"
           :validate="false"
-          class="!w-16 flex-shrink-0 text-center"
+          class="!w-16 shrink-0 text-center"
           @update:model-value="onRotationInput"
         />
       </div>

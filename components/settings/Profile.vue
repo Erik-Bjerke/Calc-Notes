@@ -5,9 +5,9 @@
       <SettingsSectionHeader icon="mdi:account-circle-outline" title="Profile" description="Your account information" />
 
       <!-- Profile card -->
-      <div class="relative rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 border border-gray-200 dark:border-gray-700/50 px-4 py-5 mb-5">
+      <div class="relative rounded-xl bg-linear-to-br from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 border border-gray-200 dark:border-gray-700/50 px-4 py-5 mb-5">
         <div class="flex items-center gap-4">
-          <button type="button" class="relative group flex-shrink-0 rounded-full" title="Change avatar" @click="subSection = 'avatar'">
+          <button type="button" class="relative group shrink-0 rounded-full" title="Change avatar" @click="subSection = 'avatar'">
             <UiAvatar :src="user?.avatarUrl" size="xl" ring />
             <div class="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <Icon name="mdi:camera" class="w-4 h-4 text-white" />

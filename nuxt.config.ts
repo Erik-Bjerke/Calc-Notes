@@ -1,3 +1,5 @@
+import tailwindcss from '@tailwindcss/vite'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -70,11 +72,25 @@ export default defineNuxtConfig({
     '@nuxt/fonts',
     '@nuxt/eslint',
     '@nuxtjs/i18n',
-    '@nuxtjs/tailwindcss',
     '@nuxtjs/color-mode',
     'nuxt-codemirror',
+    'numori-ui/nuxt',
     '~/modules/version',
   ],
+
+  // Tailwind 4 is wired as a Vite plugin below (not the Nuxt Tailwind module),
+  // so numori-ui's own `tailwind` option stays off and we own the CSS entry.
+  css: ['~/assets/css/main.css'],
+
+  numoriUi: {
+    prefix: 'Ui',
+    // Delegate icon rendering to @nuxt/icon: the app already bundles its full
+    // MDI set locally for offline use, so UiIcon should render through the same
+    // pipeline rather than numori-ui's small built-in subset.
+    icons: {
+      component: 'Icon',
+    },
+  },
   icon: {
     // Ensure all icons are bundled into the app — no network requests at runtime.
     // This is critical for the mobile app which must work fully offline.
@@ -334,6 +350,7 @@ export default defineNuxtConfig({
     },
   },
   vite: {
+    plugins: [tailwindcss()],
     resolve: {
       // Force a single instance of CodeMirror's core packages. nuxt-codemirror
       // nests its own @codemirror/state|view, and the Automerge codemirror

@@ -2,7 +2,7 @@
   <UiModal :show="isOpen" max-width="lg" :fullscreen-mobile="false" panel-class="max-h-[85vh]" @close="$emit('close')">
     <!-- Header -->
     <div
-      class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-800 flex-shrink-0"
+      class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-800 shrink-0"
     >
       <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-400 leading-none">
         Share Analytics
@@ -25,7 +25,7 @@
     </div>
 
     <!-- Tabs -->
-    <div class="flex border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+    <div class="flex border-b border-gray-200 dark:border-gray-800 shrink-0">
       <UiButton
         v-for="tab in tabs"
         :key="tab.id"
@@ -135,18 +135,18 @@
               <div
                 v-for="v in recentUniqueViewers"
                 :key="v.fingerprint || v.id"
-                class="flex items-center justify-between text-xs py-1.5 px-2 rounded bg-gray-50 dark:bg-gray-900"
+                class="flex items-center justify-between text-xs py-1.5 px-2 rounded-sm bg-gray-50 dark:bg-gray-900"
               >
                 <div class="flex items-center gap-1.5 min-w-0">
                   <Icon
                     :name="v.eventType === 'import' ? 'mdi:download' : 'mdi:eye-outline'"
-                    class="w-3.5 h-3.5 flex-shrink-0"
+                    class="w-3.5 h-3.5 shrink-0"
                     :class="v.eventType === 'import' ? 'text-primary-500' : 'text-gray-400'"
                   />
                   <span class="text-gray-700 dark:text-gray-300 truncate">{{
                     viewerLabel(v)
                   }}</span>
-                  <span v-if="v.totalVisits > 1" class="text-gray-400 flex-shrink-0"
+                  <span v-if="v.totalVisits > 1" class="text-gray-400 shrink-0"
                     >({{ v.totalVisits }}x)</span
                   >
                   <span v-if="v.location" class="text-gray-400 truncate hidden sm:inline"
@@ -156,7 +156,7 @@
                     >· {{ v.parsed.summary }}</span
                   >
                 </div>
-                <span class="text-gray-400 flex-shrink-0 ml-2">{{
+                <span class="text-gray-400 shrink-0 ml-2">{{
                   formatTimeAgo(v.viewedAt)
                 }}</span>
               </div>
@@ -225,7 +225,7 @@
                 />
                 <Icon
                   :name="v.eventType === 'import' ? 'mdi:download' : 'mdi:eye-outline'"
-                  class="w-4 h-4 flex-shrink-0"
+                  class="w-4 h-4 shrink-0"
                   :class="v.eventType === 'import' ? 'text-primary-500' : 'text-gray-400'"
                 />
                 <span class="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
@@ -233,7 +233,7 @@
                 </span>
                 <span
                   v-if="v.totalVisits > 1"
-                  class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex-shrink-0"
+                  class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 shrink-0"
                 >
                   {{ v.totalVisits }} visits
                 </span>
@@ -247,7 +247,7 @@
                 >
                   {{ v.eventType }}
                 </span>
-                <span class="ml-auto text-[10px] text-gray-400 flex-shrink-0">{{
+                <span class="ml-auto text-[10px] text-gray-400 shrink-0">{{
                   formatTimestamp(v.viewedAt)
                 }}</span>
               </div>
@@ -302,19 +302,19 @@
                 <template v-if="showRaw">
                   <div
                     v-if="v.raw.userAgent"
-                    class="mt-1 px-2 py-1.5 rounded bg-gray-100 dark:bg-gray-800 font-mono text-[10px] text-gray-500 dark:text-gray-500 break-all"
+                    class="mt-1 px-2 py-1.5 rounded-sm bg-gray-100 dark:bg-gray-800 font-mono text-[10px] text-gray-500 dark:text-gray-500 break-all"
                   >
                     <span class="text-gray-400">UA:</span> {{ v.raw.userAgent }}
                   </div>
                   <div
                     v-if="v.raw.acceptLanguage"
-                    class="px-2 py-1.5 rounded bg-gray-100 dark:bg-gray-800 font-mono text-[10px] text-gray-500 dark:text-gray-500 break-all"
+                    class="px-2 py-1.5 rounded-sm bg-gray-100 dark:bg-gray-800 font-mono text-[10px] text-gray-500 dark:text-gray-500 break-all"
                   >
                     <span class="text-gray-400">Accept-Language:</span> {{ v.raw.acceptLanguage }}
                   </div>
                   <div
                     v-if="v.raw.secChUa"
-                    class="px-2 py-1.5 rounded bg-gray-100 dark:bg-gray-800 font-mono text-[10px] text-gray-500 dark:text-gray-500 break-all"
+                    class="px-2 py-1.5 rounded-sm bg-gray-100 dark:bg-gray-800 font-mono text-[10px] text-gray-500 dark:text-gray-500 break-all"
                   >
                     <span class="text-gray-400">Sec-CH-UA:</span> {{ v.raw.secChUa }}
                   </div>

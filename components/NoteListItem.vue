@@ -19,11 +19,11 @@
     <!-- Select-mode checkbox -->
     <div
       v-if="selectMode"
-      class="flex-shrink-0 mr-1 flex items-center justify-center"
+      class="shrink-0 mr-1 flex items-center justify-center"
       @click.stop="$emit('toggle-select', note.id)"
     >
       <div
-        class="w-4 h-4 rounded border-2 flex items-center justify-center transition-colors"
+        class="w-4 h-4 rounded-sm border-2 flex items-center justify-center transition-colors"
         :class="
           selected
             ? 'bg-primary-600 border-primary-600'
@@ -35,12 +35,12 @@
     </div>
 
     <!-- Empty twisty slot (aligns note icons under folder icons) -->
-    <span v-else class="w-4 flex-shrink-0" />
+    <span v-else class="w-4 shrink-0" />
 
     <!-- File icon -->
     <Icon
       :name="shared ? 'mdi:file-link-outline' : 'mdi:file-document-outline'"
-      class="w-4 h-4 flex-shrink-0 mr-1.5"
+      class="w-4 h-4 shrink-0 mr-1.5"
       :class="shared ? 'text-primary-500 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'"
     />
 
@@ -53,14 +53,14 @@
     <Icon
       v-if="pending && isLoggedIn"
       name="mdi:content-save-outline"
-      class="flex-shrink-0 w-4 h-4 mx-0.5 text-gray-400 dark:text-gray-500"
+      class="shrink-0 w-4 h-4 mx-0.5 text-gray-400 dark:text-gray-500"
       title="Unsaved changes — not synced yet"
     />
 
     <!-- Three-dots menu (reveals on hover / focus) -->
     <div
       v-if="!selectMode"
-      class="flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+      class="shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
       :class="{ 'opacity-100': menuOpen }"
     >
       <UiDropdown

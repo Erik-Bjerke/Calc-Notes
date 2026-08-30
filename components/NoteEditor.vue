@@ -56,19 +56,19 @@
       <!-- Link action popup -->
       <UiPopup :show="linkPopup.show" :x="linkPopup.x" :y="linkPopup.y" :offset-y="20" @close="closeLinkPopup">
         <div v-if="linkPopup.isExternal" class="flex items-center gap-1.5 px-3 py-1.5 text-xs text-amber-600 dark:text-amber-400">
-          <Icon name="mdi:alert-outline" class="w-3.5 h-3.5 block flex-shrink-0" />
+          <Icon name="mdi:alert-outline" class="w-3.5 h-3.5 block shrink-0" />
           <span>Be careful, external link</span>
         </div>
         <UiButton variant="menu-item" @click="openLink">
-          <Icon name="mdi:open-in-new" class="w-4 h-4 block flex-shrink-0" />
+          <Icon name="mdi:open-in-new" class="w-4 h-4 block shrink-0" />
           <span>Open Link</span>
         </UiButton>
         <UiButton variant="menu-item" @click="copyLinkUrl">
-          <Icon name="mdi:content-copy" class="w-4 h-4 block flex-shrink-0" />
+          <Icon name="mdi:content-copy" class="w-4 h-4 block shrink-0" />
           <span>Copy Link</span>
         </UiButton>
         <UiButton variant="menu-item" @click="copyLinkName">
-          <Icon name="mdi:format-text" class="w-4 h-4 block flex-shrink-0" />
+          <Icon name="mdi:format-text" class="w-4 h-4 block shrink-0" />
           <span>Copy Link Name</span>
         </UiButton>
         <div class="px-3 py-1 text-xs text-gray-400 dark:text-gray-500 truncate border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">

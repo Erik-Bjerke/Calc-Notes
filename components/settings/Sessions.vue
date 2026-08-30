@@ -15,9 +15,9 @@
             <div class="flex items-start justify-between gap-2">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5">
-                  <Icon :name="getDeviceIcon(s.deviceName)" class="w-4 h-4 flex-shrink-0" :class="s.isCurrent ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'" />
+                  <Icon :name="getDeviceIcon(s.deviceName)" class="w-4 h-4 shrink-0" :class="s.isCurrent ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'" />
                   <p class="text-sm font-medium truncate" :class="s.isCurrent ? 'text-primary-700 dark:text-primary-300' : 'text-gray-900 dark:text-gray-200'">{{ s.deviceName || 'Unknown device' }}</p>
-                  <span v-if="s.isCurrent" class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 flex-shrink-0">current</span>
+                  <span v-if="s.isCurrent" class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 shrink-0">current</span>
                 </div>
                 <div class="mt-1 space-y-0.5">
                   <p v-if="s.location || s.ipAddress" class="text-xs text-gray-500 dark:text-gray-500 truncate">{{ s.location || s.ipAddress }}</p>
@@ -25,7 +25,7 @@
                   <p v-if="s.expiresAt" class="text-xs text-gray-400 dark:text-gray-600">Expires {{ formatDate(s.expiresAt) }}</p>
                 </div>
               </div>
-              <UiButton v-if="!s.isCurrent" variant="ghost" color="red" size="xs" icon-only :disabled="saving" class="flex-shrink-0" title="Close session" @click="closeSession(s.id)">
+              <UiButton v-if="!s.isCurrent" variant="ghost" color="red" size="xs" icon-only :disabled="saving" class="shrink-0" title="Close session" @click="closeSession(s.id)">
                 <Icon name="mdi:close" class="w-4 h-4" />
               </UiButton>
             </div>

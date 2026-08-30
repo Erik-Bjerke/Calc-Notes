@@ -9,7 +9,7 @@
   >
     <div
       v-if="offline"
-      class="flex-shrink-0 overflow-hidden bg-amber-500 dark:bg-amber-600 text-white text-xs font-medium"
+      class="shrink-0 overflow-hidden bg-amber-500 dark:bg-amber-600 text-white text-xs font-medium"
       :style="{ paddingTop: 'env(safe-area-inset-top, 0px)' }"
       role="status"
     >

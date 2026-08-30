@@ -62,20 +62,20 @@
         </template>
 
         <UiButton variant="menu-item" @click="emitExport('text')">
-          <Icon name="mdi:file-document-outline" class="w-4 h-4 block flex-shrink-0" />
+          <Icon name="mdi:file-document-outline" class="w-4 h-4 block shrink-0" />
           <span>Text (.txt)</span>
         </UiButton>
         <UiButton variant="menu-item" @click="emitExport('markdown')">
-          <Icon name="mdi:language-markdown-outline" class="w-4 h-4 block flex-shrink-0" />
+          <Icon name="mdi:language-markdown-outline" class="w-4 h-4 block shrink-0" />
           <span>Markdown (.md)</span>
         </UiButton>
         <UiButton variant="menu-item" @click="emitExport('pdf')">
-          <Icon name="mdi:file-pdf-box" class="w-4 h-4 block flex-shrink-0" />
+          <Icon name="mdi:file-pdf-box" class="w-4 h-4 block shrink-0" />
           <span>PDF</span>
         </UiButton>
         <UiDivider />
         <UiButton variant="menu-item" @click="emitExport('json')">
-          <Icon name="mdi:code-json" class="w-4 h-4 block flex-shrink-0" />
+          <Icon name="mdi:code-json" class="w-4 h-4 block shrink-0" />
           <span>Export as JSON</span>
         </UiButton>
       </UiDropdown>

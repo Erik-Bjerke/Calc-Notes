@@ -9,7 +9,7 @@
       <template #top>
         <button
           type="button"
-          class="w-9 h-9 flex items-center justify-center rounded-full bg-primary-600 hover:bg-primary-500 text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400/60"
+          class="w-9 h-9 flex items-center justify-center rounded-full bg-primary-600 hover:bg-primary-500 text-white shadow-xs transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400/60"
           title="New note"
           aria-label="New note"
           @click="onNewNote"

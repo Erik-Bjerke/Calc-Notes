@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center" :class="containerClass">
     <!-- Undo / Redo (pinned left) -->
-    <div class="flex items-center flex-shrink-0">
+    <div class="flex items-center shrink-0">
       <UiButton
         :disabled="!canUndo"
         variant="ghost"
@@ -45,7 +45,7 @@
         variant="ghost"
         color="gray"
         icon-only
-        class="flex-shrink-0"
+        class="shrink-0"
         :title="btn.title"
         @mousedown.prevent
         @click="$emit('apply-format', btn.before, btn.after)"
@@ -53,13 +53,13 @@
         <Icon :name="btn.icon" class="w-5 h-5 block" />
       </UiButton>
       <!-- Separator -->
-      <UiDivider direction="vertical" class="flex-shrink-0" />
+      <UiDivider direction="vertical" class="shrink-0" />
       <!-- Indent / Outdent -->
       <UiButton
         variant="ghost"
         color="gray"
         icon-only
-        class="flex-shrink-0"
+        class="shrink-0"
         title="Indent (nest)"
         @mousedown.prevent
         @click="$emit('indent')"
@@ -70,7 +70,7 @@
         variant="ghost"
         color="gray"
         icon-only
-        class="flex-shrink-0"
+        class="shrink-0"
         title="Outdent (unnest)"
         @mousedown.prevent
         @click="$emit('outdent')"
@@ -80,7 +80,7 @@
     </div>
 
     <!-- Dismiss keyboard (pinned right, optional) -->
-    <div v-if="showDismiss" class="flex items-center flex-shrink-0">
+    <div v-if="showDismiss" class="flex items-center shrink-0">
       <UiDivider direction="vertical" />
       <UiButton
         variant="ghost"
