@@ -103,7 +103,7 @@
     "nodemailer": "^9.0.3",
     "nuxt": "^4.5.1",
     "nuxt-codemirror": "^0.0.20",
-    "numori-ui": "^0.1.0",
+    "numori-ui": "^0.1.1",
     "pg": "^8.22.0",
     "tailwind-merge": "^3.6.0",
     "vue": "^3.5.40",

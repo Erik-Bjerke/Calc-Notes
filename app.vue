@@ -22,11 +22,19 @@ body {
   --sal: env(safe-area-inset-left, 0px);
 }
 
-/* Smooth theme transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+/* Smooth theme transitions.
+ *
+ * Scoped to @layer base so Tailwind v4 utilities (transition-all, duration-300,
+ * ...) still win. Tailwind v4 emits every utility inside a cascade layer, and
+ * an UNLAYERED rule outranks any layered rule regardless of specificity — so
+ * without this layer, `*` here would override every component's transition
+ * utilities (e.g. the sidebar's transition-all duration-300), breaking them. */
+@layer base {
+  * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
 }
 
 /* CodeMirror manages its own transitions — don't interfere */

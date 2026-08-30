@@ -40,7 +40,7 @@
       </UiButton>
       <UiButton
         :title="zoomPercent === 100 ? 'Zoom at 100%' : 'Reset zoom to 100%'"
-        class="flex-1 text-center text-sm rounded-sm px-1 py-0.5 min-w-0w-0"
+        class="flex-1 text-center text-sm rounded-sm px-1 py-0.5 min-w-0"
         :class="
           zoomPercent === 100
             ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-500 dark:hover:text-gray-400 cursor-default'
