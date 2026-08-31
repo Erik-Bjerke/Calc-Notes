@@ -7,9 +7,12 @@ export const useWelcomeWizard = () => {
   // Load completion state from Dexie — store the promise so callers can await it
   let _ready
   if (import.meta.client) {
-    _ready = db.appState.get('welcome_completed').then((row) => {
-      completed.value = row?.value === '1'
-    }).catch(() => {})
+    _ready = db.appState
+      .get('welcome_completed')
+      .then((row) => {
+        completed.value = row?.value === '1'
+      })
+      .catch(() => {})
   } else {
     _ready = Promise.resolve()
   }

@@ -87,7 +87,7 @@ export const normalizeUnitSpacing = (input) => {
   for (let i = 0; i < protectedPatterns.length; i++) {
     protected_ = protected_.replace(
       new RegExp(`(\\d)__PROTECTED_${i}__|__PROTECTED_${i}__`),
-      (match, digit) => digit ? digit + ' ' + protectedPatterns[i] : protectedPatterns[i]
+      (match, digit) => (digit ? digit + ' ' + protectedPatterns[i] : protectedPatterns[i]),
     )
   }
 
@@ -109,8 +109,10 @@ export const findUnitCategory = (unitName) => {
     const baseUnit = sqMatch[2]
     const areaKey = `square ${baseUnit}`
     const sqKey = `sq ${baseUnit}`
-    if (unitConversions.area[areaKey]) return { category: 'area', unit: areaKey, factor: unitConversions.area[areaKey] }
-    if (unitConversions.area[sqKey]) return { category: 'area', unit: sqKey, factor: unitConversions.area[sqKey] }
+    if (unitConversions.area[areaKey])
+      return { category: 'area', unit: areaKey, factor: unitConversions.area[areaKey] }
+    if (unitConversions.area[sqKey])
+      return { category: 'area', unit: sqKey, factor: unitConversions.area[sqKey] }
     // Try to derive from length
     const lengthFactor = unitConversions.length[baseUnit]
     if (lengthFactor !== undefined) {
@@ -123,12 +125,18 @@ export const findUnitCategory = (unitName) => {
     const baseUnit = cuMatch[2]
     const cuKey = `cu ${baseUnit}`
     const cubicKey = `cubic ${baseUnit}`
-    if (unitConversions.volume[cuKey]) return { category: 'volume', unit: cuKey, factor: unitConversions.volume[cuKey] }
-    if (unitConversions.volume[cubicKey]) return { category: 'volume', unit: cubicKey, factor: unitConversions.volume[cubicKey] }
+    if (unitConversions.volume[cuKey])
+      return { category: 'volume', unit: cuKey, factor: unitConversions.volume[cuKey] }
+    if (unitConversions.volume[cubicKey])
+      return { category: 'volume', unit: cubicKey, factor: unitConversions.volume[cubicKey] }
     // Derive from length
     const lengthFactor = unitConversions.length[baseUnit]
     if (lengthFactor !== undefined) {
-      return { category: 'volume', unit: cuKey, factor: lengthFactor * lengthFactor * lengthFactor * 1000 }
+      return {
+        category: 'volume',
+        unit: cuKey,
+        factor: lengthFactor * lengthFactor * lengthFactor * 1000,
+      }
     }
   }
 
@@ -157,12 +165,12 @@ export const convertTemperature = (value, fromUnit, toUnit) => {
   // Convert to Celsius first
   let celsius
   if (from === 'C') celsius = value
-  else if (from === 'F') celsius = (value - 32) * 5 / 9
+  else if (from === 'F') celsius = ((value - 32) * 5) / 9
   else if (from === 'K') celsius = value - 273.15
 
   // Convert from Celsius to target
   if (to === 'C') return celsius
-  if (to === 'F') return celsius * 9 / 5 + 32
+  if (to === 'F') return (celsius * 9) / 5 + 32
   if (to === 'K') return celsius + 273.15
 }
 
@@ -174,7 +182,7 @@ export const convertFuelEconomy = (value, fromUnit, toUnit) => {
   if (fromFactor === undefined || toFactor === undefined) return null
 
   const isFromInverse = fromFactor === -1 // l/100km
-  const isToInverse = toFactor === -1     // l/100km
+  const isToInverse = toFactor === -1 // l/100km
 
   // Convert source value to kpl (base)
   let kpl
@@ -203,7 +211,8 @@ export const parseUnitExpression = (expr, category) => {
   const normalized = normalizeUnitSpacing(expr)
 
   // Try compound units first: "1 meter 20 cm"
-  const compoundPattern = /(\d+(?:\.\d+)?)\s+([\w]+(?:\s+[\w]+)?)\s+(\d+(?:\.\d+)?)\s+([\w]+(?:\s+[\w]+)?)/i
+  const compoundPattern =
+    /(\d+(?:\.\d+)?)\s+([\w]+(?:\s+[\w]+)?)\s+(\d+(?:\.\d+)?)\s+([\w]+(?:\s+[\w]+)?)/i
   const compoundMatch = normalized.match(compoundPattern)
   if (compoundMatch) {
     const val1 = parseFloat(compoundMatch[1])
@@ -247,16 +256,21 @@ export const parseUnitExpression = (expr, category) => {
       }
     }
     if (foundUnit && foundInfo) {
-      const escaped = foundUnit.split('').map(ch => {
-        if ('.+*?^[]{}()|\\'.indexOf(ch) >= 0) return '\\' + ch
-        return ch
-      }).join('')
+      const escaped = foundUnit
+        .split('')
+        .map((ch) => {
+          if ('.+*?^[]{}()|\\'.indexOf(ch) >= 0) return '\\' + ch
+          return ch
+        })
+        .join('')
       const unitRe = new RegExp('\\b' + escaped + '\\b', 'gi')
       const stripped = normalized.replace(unitRe, '').trim()
       try {
         const value = evaluateMath(stripped)
         return value * foundInfo.factor
-      } catch (_e) { /* fall through */ }
+      } catch (_e) {
+        /* fall through */
+      }
     }
   }
 
@@ -266,7 +280,10 @@ export const parseUnitExpression = (expr, category) => {
     let total = null
     let op = '+'
     for (const part of parts) {
-      if (part === '+' || part === '-') { op = part; continue }
+      if (part === '+' || part === '-') {
+        op = part
+        continue
+      }
       const partRe = new RegExp(`^${SCALED_NUM_RE}\\s+(.+)$`)
       const m = part.trim().match(partRe)
       if (m) {
@@ -285,7 +302,9 @@ export const parseUnitExpression = (expr, category) => {
           const val = evaluateMath(part.trim())
           if (total === null) total = val
           else total = op === '+' ? total + val : total - val
-        } catch (_e) { return null }
+        } catch (_e) {
+          return null
+        }
       }
     }
     return total
@@ -294,7 +313,9 @@ export const parseUnitExpression = (expr, category) => {
   // Try evaluating as pure math  // Try evaluating as pure math
   try {
     return evaluateMath(expr)
-  } catch (_e) { return null }
+  } catch (_e) {
+    return null
+  }
 }
 
 // Parse compound units like "1 meter 20 cm"
@@ -329,11 +350,16 @@ export const isCSSBridgeConversion = (sourceExpr, targetUnit) => {
   const targetLower = targetUnit.toLowerCase()
 
   const normalizedSource = normalizeUnitSpacing(sourceExpr)
-  const sourceUnit = normalizedSource.match(/\d+(?:\.\d+)?\s+(.+)/)?.[1]?.trim()?.toLowerCase()
+  const sourceUnit = normalizedSource
+    .match(/\d+(?:\.\d+)?\s+(.+)/)?.[1]
+    ?.trim()
+    ?.toLowerCase()
   if (!sourceUnit) return false
 
-  return (cssUnits.includes(targetLower) && lengthUnits.includes(sourceUnit)) ||
-         (lengthUnits.includes(targetLower) && cssUnits.includes(sourceUnit))
+  return (
+    (cssUnits.includes(targetLower) && lengthUnits.includes(sourceUnit)) ||
+    (lengthUnits.includes(targetLower) && cssUnits.includes(sourceUnit))
+  )
 }
 
 export const handleCSSBridge = (sourceExpr, targetUnit) => {
@@ -351,8 +377,11 @@ export const handleCSSBridge = (sourceExpr, targetUnit) => {
   const lengthUnits = unitConversions.length
   const cssUnits = unitConversions.css
 
-  if (lengthUnits[srcUnit] !== undefined && (targetLower === 'px' || targetLower === 'pixel' || targetLower === 'pixels')) {
-    const inches = value * lengthUnits[srcUnit] / 0.0254
+  if (
+    lengthUnits[srcUnit] !== undefined &&
+    (targetLower === 'px' || targetLower === 'pixel' || targetLower === 'pixels')
+  ) {
+    const inches = (value * lengthUnits[srcUnit]) / 0.0254
     const px = inches * ppi
     return { value: px, unit: targetUnit, hasUnit: true, isConverted: true }
   }
@@ -395,20 +424,46 @@ export const handleUnitExpression = (input) => {
         const srcUnitInfo = findUnitCategory(vVal.unit)
         if (srcUnitInfo) {
           // Fuel economy variable conversion
-          if (srcUnitInfo.category === 'fueleconomy' && unitConversions.fueleconomy[targetUnitStr.toLowerCase()] !== undefined) {
+          if (
+            srcUnitInfo.category === 'fueleconomy' &&
+            unitConversions.fueleconomy[targetUnitStr.toLowerCase()] !== undefined
+          ) {
             const result = convertFuelEconomy(vVal.value, vVal.unit, targetUnitStr)
-            if (result !== null) return { value: result, unit: targetUnitStr, category: 'fueleconomy', hasUnit: true, isConverted: true }
+            if (result !== null)
+              return {
+                value: result,
+                unit: targetUnitStr,
+                category: 'fueleconomy',
+                hasUnit: true,
+                isConverted: true,
+              }
           }
           // Temperature variable conversion
-          if (srcUnitInfo.category === 'temperature' && unitConversions.temperature[targetUnitStr.toLowerCase()]) {
+          if (
+            srcUnitInfo.category === 'temperature' &&
+            unitConversions.temperature[targetUnitStr.toLowerCase()]
+          ) {
             const result = convertTemperature(vVal.value, vVal.unit, targetUnitStr)
-            if (result !== null) return { value: result, unit: targetUnitStr, category: 'temperature', hasUnit: true, isConverted: true }
+            if (result !== null)
+              return {
+                value: result,
+                unit: targetUnitStr,
+                category: 'temperature',
+                hasUnit: true,
+                isConverted: true,
+              }
           }
           // General unit variable conversion (same category)
           if (targetInfo && targetInfo.category === srcUnitInfo.category) {
             const baseValue = vVal.value * srcUnitInfo.factor
             const result = baseValue / targetInfo.factor
-            return { value: result, unit: targetUnitStr, category: targetInfo.category, hasUnit: true, isConverted: true }
+            return {
+              value: result,
+              unit: targetUnitStr,
+              category: targetInfo.category,
+              hasUnit: true,
+              isConverted: true,
+            }
           }
         }
       }
@@ -423,7 +478,14 @@ export const handleUnitExpression = (input) => {
         const srcUnit = srcMatch[3].trim()
         if (unitConversions.temperature[srcUnit.toLowerCase()]) {
           const result = convertTemperature(value, srcUnit, targetUnitStr)
-          if (result !== null) return { value: result, unit: targetUnitStr, category: 'temperature', hasUnit: true, isConverted: true }
+          if (result !== null)
+            return {
+              value: result,
+              unit: targetUnitStr,
+              category: 'temperature',
+              hasUnit: true,
+              isConverted: true,
+            }
         }
       }
     }
@@ -437,7 +499,14 @@ export const handleUnitExpression = (input) => {
         const srcUnit = srcMatch[3].trim()
         if (unitConversions.fueleconomy[srcUnit.toLowerCase()] !== undefined) {
           const result = convertFuelEconomy(value, srcUnit, targetUnitStr)
-          if (result !== null) return { value: result, unit: targetUnitStr, category: 'fueleconomy', hasUnit: true, isConverted: true }
+          if (result !== null)
+            return {
+              value: result,
+              unit: targetUnitStr,
+              category: 'fueleconomy',
+              hasUnit: true,
+              isConverted: true,
+            }
         }
       }
     }
@@ -446,7 +515,10 @@ export const handleUnitExpression = (input) => {
       // Fuel economy uses special conversion (not simple factor division)
       if (targetInfo.category === 'fueleconomy') {
         // Already handled above, skip general path
-      } else if (targetInfo.category === 'css' || isCSSBridgeConversion(sourceExpr, targetUnitStr)) {
+      } else if (
+        targetInfo.category === 'css' ||
+        isCSSBridgeConversion(sourceExpr, targetUnitStr)
+      ) {
         const bridgeResult = handleCSSBridge(sourceExpr, targetUnitStr)
         if (bridgeResult) return bridgeResult
       }
@@ -455,7 +527,13 @@ export const handleUnitExpression = (input) => {
         const sourceValue = parseUnitExpression(sourceExpr, targetInfo.category)
         if (sourceValue !== null) {
           const result = sourceValue / targetInfo.factor
-          return { value: result, unit: targetUnitStr, category: targetInfo.category, hasUnit: true, isConverted: true }
+          return {
+            value: result,
+            unit: targetUnitStr,
+            category: targetInfo.category,
+            hasUnit: true,
+            isConverted: true,
+          }
         }
       }
     }
@@ -476,7 +554,13 @@ export const handleUnitExpression = (input) => {
     const unitStr = simpleMatch[3].trim()
     const unitInfo = findUnitCategory(unitStr)
     if (unitInfo) {
-      return { value, unit: unitStr, category: unitInfo.category, hasUnit: true, isConverted: false }
+      return {
+        value,
+        unit: unitStr,
+        category: unitInfo.category,
+        hasUnit: true,
+        isConverted: false,
+      }
     }
   }
 
@@ -492,7 +576,12 @@ export const handleUnitExpression = (input) => {
     while ((um = unitCandidateRe.exec(normalized)) !== null) {
       const candidate = um[1].trim()
       // Skip words that are math keywords, not units
-      if (/^(of|what|is|on|off|as|a|in|to|and|plus|minus|times|with|without|mod|xor|divide|multiplied|by|subtract)$/i.test(candidate)) continue
+      if (
+        /^(of|what|is|on|off|as|a|in|to|and|plus|minus|times|with|without|mod|xor|divide|multiplied|by|subtract)$/i.test(
+          candidate,
+        )
+      )
+        continue
       const info = findUnitCategory(candidate)
       if (info) {
         if (!bestUnit || candidate.length > bestUnit.length) {
@@ -502,16 +591,27 @@ export const handleUnitExpression = (input) => {
       }
     }
     if (bestUnit && bestInfo) {
-      const escaped = bestUnit.split('').map(ch => {
-        if ('.+*?^[]{}()|\\'.indexOf(ch) >= 0) return '\\' + ch
-        return ch
-      }).join('')
+      const escaped = bestUnit
+        .split('')
+        .map((ch) => {
+          if ('.+*?^[]{}()|\\'.indexOf(ch) >= 0) return '\\' + ch
+          return ch
+        })
+        .join('')
       const unitRe = new RegExp('\\b' + escaped + '\\b', 'gi')
       const stripped = normalized.replace(unitRe, '').trim()
       try {
         const value = evaluateMath(stripped)
-        return { value, unit: bestUnit, category: bestInfo.category, hasUnit: true, isConverted: true }
-      } catch (_e) { /* fall through */ }
+        return {
+          value,
+          unit: bestUnit,
+          category: bestInfo.category,
+          hasUnit: true,
+          isConverted: true,
+        }
+      } catch (_e) {
+        /* fall through */
+      }
     }
   }
 

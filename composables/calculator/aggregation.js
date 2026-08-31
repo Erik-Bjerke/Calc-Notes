@@ -39,7 +39,12 @@ export const detectSumCurrency = (currentIndex, allResults, filter = null) => {
   return firstCurrency
 }
 
-export const calculateSumWithCurrency = (currentIndex, allResults, targetCurrency, filter = null) => {
+export const calculateSumWithCurrency = (
+  currentIndex,
+  allResults,
+  targetCurrency,
+  filter = null,
+) => {
   let sum = 0
   for (let i = currentIndex - 1; i >= 0; i--) {
     const line = allResults[i]
@@ -51,8 +56,14 @@ export const calculateSumWithCurrency = (currentIndex, allResults, targetCurrenc
         const value = parseFloat(resultMatch[1])
         const currency = resultMatch[2]
         if (currency && targetCurrency) {
-          try { sum += convertCurrency(value, currency, targetCurrency) } catch (_e) { sum += value }
-        } else { sum += value }
+          try {
+            sum += convertCurrency(value, currency, targetCurrency)
+          } catch (_e) {
+            sum += value
+          }
+        } else {
+          sum += value
+        }
       }
     }
   }
@@ -74,7 +85,12 @@ export const calculateSub = (currentIndex, allResults, filter = null) => {
   return result
 }
 
-export const calculateSubWithCurrency = (currentIndex, allResults, targetCurrency, filter = null) => {
+export const calculateSubWithCurrency = (
+  currentIndex,
+  allResults,
+  targetCurrency,
+  filter = null,
+) => {
   const values = []
   for (let i = currentIndex - 1; i >= 0; i--) {
     const line = allResults[i]
@@ -86,8 +102,14 @@ export const calculateSubWithCurrency = (currentIndex, allResults, targetCurrenc
         const value = parseFloat(resultMatch[1])
         const currency = resultMatch[2]
         if (currency && targetCurrency) {
-          try { values.push(convertCurrency(value, currency, targetCurrency)) } catch (_e) { values.push(value) }
-        } else { values.push(value) }
+          try {
+            values.push(convertCurrency(value, currency, targetCurrency))
+          } catch (_e) {
+            values.push(value)
+          }
+        } else {
+          values.push(value)
+        }
       }
     }
   }
@@ -99,11 +121,15 @@ export const calculateSubWithCurrency = (currentIndex, allResults, targetCurrenc
 }
 
 export const calculateAverage = (currentIndex, allResults) => {
-  let sum = 0, count = 0
+  let sum = 0,
+    count = 0
   for (let i = currentIndex - 1; i >= 0; i--) {
     const line = allResults[i]
     if (!line || !line.input.trim()) break
-    if (line.result && !isNaN(parseFloat(line.result))) { sum += parseFloat(line.result); count++ }
+    if (line.result && !isNaN(parseFloat(line.result))) {
+      sum += parseFloat(line.result)
+      count++
+    }
   }
   return count > 0 ? sum / count : 0
 }

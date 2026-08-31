@@ -4,7 +4,7 @@
  * but they still check for updates via the version endpoint.
  */
 export default defineNuxtPlugin(() => {
-  const isCapacitor = !!/** @type {any} */ (window).Capacitor
+  const isCapacitor = !!(/** @type {any} */ (window).Capacitor)
 
   if (!isCapacitor && 'serviceWorker' in navigator) {
     navigator.serviceWorker

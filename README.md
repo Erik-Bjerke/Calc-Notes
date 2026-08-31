@@ -72,35 +72,10 @@ npm run dev                 # http://localhost:3000
 │   └── shared/
 │       └── [hash].vue             # Public shared-note viewer
 ├── components/
-│   ├── ui/                        # Reusable UI primitives
-│   │   ├── Alert.vue              # Alert / banner component
-│   │   ├── Avatar.vue             # User avatar
-│   │   ├── Badge.vue              # Status / label badge
-│   │   ├── Button.vue             # Button with variants, sizes, loading state
-│   │   ├── ButtonsGroup.vue       # Grouped button container
-│   │   ├── Checkbox.vue           # Checkbox input
-│   │   ├── Divider.vue            # Horizontal divider
-│   │   ├── Dropdown.vue           # Dropdown menu container
-│   │   ├── DropdownItem.vue       # Dropdown menu item
-│   │   ├── DropdownRow.vue        # Dropdown row layout
-│   │   ├── DropdownSubmenu.vue    # Nested dropdown submenu
-│   │   ├── FileInput.vue          # File upload input
-│   │   ├── FormField.vue          # Form field wrapper with label / error
-│   │   ├── Input.vue              # Text input
-│   │   ├── Kbd.vue                # Keyboard shortcut badge
-│   │   ├── ListMenu.vue           # Vertical list menu
-│   │   ├── ListMenuItem.vue       # Single item in a list menu
-│   │   ├── Modal.vue              # Modal dialog
-│   │   ├── Numpad.vue             # Numeric keypad
-│   │   ├── Popup.vue              # Popup / popover
-│   │   ├── ProgressBar.vue        # Progress bar
-│   │   ├── Prompt.vue             # Confirmation prompt dialog
-│   │   ├── Radio.vue              # Radio button input
-│   │   ├── Select.vue             # Select dropdown
-│   │   ├── Slider.vue             # Range slider
-│   │   ├── Stepper.vue            # Numeric stepper
-│   │   ├── Toggle.vue             # Toggle switch
-│   │   └── Tooltip.vue            # Tooltip
+│   │                              # (UI primitives — UiButton, UiModal, UiInput,
+│   │                              #  UiToast, UiBanner, UiSpinner, UiThemeToggle,
+│   │                              #  etc. — come from the numori-ui design system,
+│   │                              #  registered globally with the `Ui` prefix)
 │   ├── settings/                  # Settings modal sub-components
 │   │   ├── Behaviour.vue          # Behaviour preferences (auto-save, etc.)
 │   │   ├── ConfirmModal.vue       # Settings confirmation dialog
@@ -144,6 +119,7 @@ npm run dev                 # http://localhost:3000
 │   │   ├── AccountSection.vue     # Account menu section
 │   │   ├── NotesList.vue          # Notes list view
 │   │   ├── SearchAndFilters.vue   # Search bar and filter controls
+│   │   ├── SearchPanel.vue        # Full-height search panel (query, filters, results)
 │   │   ├── SelectionToolbar.vue   # Bulk selection toolbar
 │   │   └── ViewSwitcher.vue       # List/grid view switcher
 │   ├── templates/                 # Templates modal sub-components
@@ -151,6 +127,7 @@ npm run dev                 # http://localhost:3000
 │   │   ├── Modal.vue              # Templates modal shell
 │   │   └── SectionHeader.vue      # Reusable templates section header
 │   ├── AboutModal.vue             # About / credits modal
+│   ├── ActivityBar.vue            # Left-edge icon rail for switching sidebar panels
 │   ├── AddToGroupModal.vue        # Add note(s) to a group
 │   ├── AppHeader.vue              # Top bar with title, menus, and actions
 │   ├── AppLockScreen.vue          # PIN / biometric lock screen overlay
@@ -173,11 +150,13 @@ npm run dev                 # http://localhost:3000
 │   ├── NoteMetaModal.vue          # Note rename / metadata / share modal
 │   ├── PrintModal.vue             # Print preview / options modal
 │   ├── RestoreConfirmModal.vue    # Backup restore confirmation
+│   ├── RestoreFromBinModal.vue    # Prompt to restore a note out of the bin
 │   ├── RestorePasswordModal.vue   # Backup restore password prompt
 │   ├── SaveModal.vue              # Save / download modal
 │   ├── ShareAnalyticsModal.vue    # Shared note view analytics
 │   ├── SharedNoteToolbar.vue      # Toolbar for the public shared-note page
 │   ├── ShareModal.vue             # Share a note (password, link, analytics)
+│   ├── SidebarWorkbench.vue       # Sidebar shell: activity bar + the active panel
 │   ├── SyncIndicator.vue          # Sync status puck (wraps numori-ui's UiSpinner)
 │   ├── UpdateNotification.vue     # In-app update available notification
 │   ├── ViewDropdown.vue           # View menu dropdown (zoom, markdown, theme toggle)
@@ -222,6 +201,7 @@ npm run dev                 # http://localhost:3000
 │   ├── useNativeKeyboardToolbar.js # Native keyboard accessory bridge
 │   ├── useNoteActions.js          # Note-level action handlers
 │   ├── useNotes.js                # Note CRUD + IndexedDB persistence
+│   ├── useNoteTree.js             # Builds the sidebar's nested file-tree model
 │   ├── useNumoriHighlight.js      # Numori syntax highlighting
 │   ├── useNumoriLanguage.js       # Custom CodeMirror language (numori)
 │   ├── useOnlineStatus.js         # Online / offline status tracking
@@ -232,16 +212,22 @@ npm run dev                 # http://localhost:3000
 │   ├── useSync.js                 # Cloud sync with E2E encryption
 │   ├── useTemplates.js            # Predefined calculation templates
 │   ├── useToast.js                # Toast notification state
+│   ├── useTreeDragDrop.js         # Depth-aware drag & drop for the note tree
 │   └── useWelcomeWizard.js        # First-run wizard state
 ├── utils/
 │   ├── automerge.js               # Automerge WASM bootstrap (inlined base64, lazy-loaded)
 │   ├── collab.js                  # Automerge Repo singleton: create/load docs, network attach
+│   ├── collabKickMarker.js        # localStorage marker so a kicked guest won't auto-rejoin
+│   ├── collabLinkage.js           # Serialise/parse a note's durable collab binding for sync
+│   ├── collabLog.js               # Debug-gated logger for collab diagnostics
 │   ├── collabPresence.js          # Presence core + CodeMirror remote-cursor extension
+│   ├── collabToken.js             # Reads a collab token's exp to decide when to re-mint
 │   ├── crypto.js                  # E2E encryption: key derivation, AES-GCM encrypt/decrypt
 │   ├── keyboard-toolbar.js        # Native keyboard toolbar utilities
 │   └── normaliseName.js           # Name normalisation helpers
 ├── plugins/
 │   ├── backbutton.client.js       # Android back button handler
+│   ├── build-info.client.js       # Logs the live build info + global error handlers
 │   ├── deeplink.client.js         # Deep link handler (Universal Links / App Links)
 │   ├── open-with.client.js        # Open-with / file association handler
 │   ├── pwa.client.js              # PWA service worker registration
@@ -282,11 +268,16 @@ npm run dev                 # http://localhost:3000
 │   │   │   ├── index.post.js      # POST /api/share — create shared note
 │   │   │   ├── my.get.js          # GET  /api/share/my — list user's shares
 │   │   │   ├── [hash].get.js      # GET  /api/share/:hash — view shared note
+│   │   │   ├── [hash].patch.js    # PATCH /api/share/:hash — update share settings (owner)
 │   │   │   ├── [hash].delete.js   # DELETE /api/share/:hash — unshare
 │   │   │   └── [hash]/
 │   │   │       ├── analytics.get.js    # GET  — view analytics
 │   │   │       ├── analytics.delete.js # DELETE — clear analytics
-│   │   │       └── import.post.js      # POST — record import event
+│   │   │       ├── import.post.js      # POST — record import event
+│   │   │       ├── members.get.js      # GET  — list the share's member allowlist (owner)
+│   │   │       ├── members.post.js     # POST — add / reactivate an allowlisted account (owner)
+│   │   │       └── members/
+│   │   │           └── [memberId].delete.js # DELETE — revoke (kick) a member (owner)
 │   │   ├── collab/
 │   │   │   └── authorize.post.js  # POST — may this peer join this document? (asked by numori-crdt)
 │   │   ├── sync/

@@ -1,10 +1,25 @@
 // Core calculator composable — orchestrates all modules
-import { variables, previousResult, previousResultCurrency, exchangeRates, ratesFetched, currencyMap, unitConversions } from './constants'
+import {
+  variables,
+  previousResult,
+  previousResultCurrency,
+  exchangeRates,
+  ratesFetched,
+  currencyMap,
+  unitConversions,
+} from './constants'
 import { evaluateMath, handleFunctions, formatResult } from './math'
 import { handleUnitExpression, findUnitCategory } from './units'
 import { handleCurrencyExpression, fetchExchangeRates } from './currency'
 import { handleTimezoneExpression, handleDateExpression } from './datetime'
-import { calculateSum, calculateAverage, detectSumCurrency, calculateSumWithCurrency, calculateSub, calculateSubWithCurrency } from './aggregation'
+import {
+  calculateSum,
+  calculateAverage,
+  detectSumCurrency,
+  calculateSumWithCurrency,
+  calculateSub,
+  calculateSubWithCurrency,
+} from './aggregation'
 import { extractTrailingNumber } from './extract'
 
 // Auto-fetch rates once (non-blocking)
@@ -22,7 +37,7 @@ const computeDimensionalDivision = (leftVar, rightVar) => {
   // distance / fuel_economy = volume
   if (leftInfo.category === 'length' && rightInfo.category === 'fueleconomy') {
     // Convert distance to km (base for fuel economy is kpl = km per litre)
-    const distanceKm = leftVar.value * leftInfo.factor / 1000 // factor gives meters, /1000 for km
+    const distanceKm = (leftVar.value * leftInfo.factor) / 1000 // factor gives meters, /1000 for km
     // Convert fuel economy to kpl (base)
     const fuelFactor = unitConversions.fueleconomy[rightVar.unit.toLowerCase()]
     if (fuelFactor === undefined) return null
@@ -42,11 +57,21 @@ const computeDimensionalDivision = (leftVar, rightVar) => {
     const feUnit = rightVar.unit.toLowerCase()
     let displayUnit = 'l'
     let displayValue = litres
-    if (feUnit === 'mpg' || feUnit === 'miles per gallon' || feUnit === 'kpg' || feUnit === 'km per gallon') {
+    if (
+      feUnit === 'mpg' ||
+      feUnit === 'miles per gallon' ||
+      feUnit === 'kpg' ||
+      feUnit === 'km per gallon'
+    ) {
       // US gallons
       displayUnit = 'gal'
       displayValue = litres / 3.78541
-    } else if (feUnit === 'mpg_uk' || feUnit === 'miles per uk gallon' || feUnit === 'kpg_uk' || feUnit === 'km per uk gallon') {
+    } else if (
+      feUnit === 'mpg_uk' ||
+      feUnit === 'miles per uk gallon' ||
+      feUnit === 'kpg_uk' ||
+      feUnit === 'km per uk gallon'
+    ) {
       // UK gallons
       displayUnit = 'gal'
       displayValue = litres / 4.54609
@@ -71,13 +96,12 @@ const computeDimensionalMultiplication = (_leftVar, _rightVar) => {
 }
 
 export const useCalculator = () => {
-
   const evaluateLines = (inputLines, options) => {
     variables.value = {}
     previousResult.value = null
     previousResultCurrency.value = null
     const results = []
-    const skipCodeBlocks = !(options?.showResultsInCodeBlocks)
+    const skipCodeBlocks = !options?.showResultsInCodeBlocks
     let inCodeBlock = false
     inputLines.forEach((input, index) => {
       const line = { input: input.trim(), result: null, error: null, type: 'calculation' }
@@ -106,8 +130,14 @@ export const useCalculator = () => {
     const input = line.input
     if (!input) return
 
-    if (input.startsWith('#')) { line.type = 'header'; return }
-    if (input.startsWith('//')) { line.type = 'comment'; return }
+    if (input.startsWith('#')) {
+      line.type = 'header'
+      return
+    }
+    if (input.startsWith('//')) {
+      line.type = 'comment'
+      return
+    }
 
     // Label with calculation (but not time format like "2:30")
     const labelMatch = input.match(/^([^:]+):\s*(.+)$/)
@@ -118,21 +148,32 @@ export const useCalculator = () => {
         line.result = result.display
         // For labeled lines, only hide plain numbers/variables — always show unit values
         if (result.hideResult && !result.unit) line.hideResult = true
-        if (result.liveTime) { line.liveTime = true; line.iana = result.iana || null }
+        if (result.liveTime) {
+          line.liveTime = true
+          line.iana = result.iana || null
+        }
         previousResult.value = result.value
         previousResultCurrency.value = result.currency || null
-      } catch (_error) { /* silent */ }
+      } catch (_error) {
+        /* silent */
+      }
       return
     }
 
-    if (input.endsWith(':')) { line.type = 'label'; return }
+    if (input.endsWith(':')) {
+      line.type = 'label'
+      return
+    }
 
     line.type = 'calculation'
     try {
       const result = evaluateExpression(input, index, allResults)
       line.result = result.display
       if (result.hideResult) line.hideResult = true
-      if (result.liveTime) { line.liveTime = true; line.iana = result.iana || null }
+      if (result.liveTime) {
+        line.liveTime = true
+        line.iana = result.iana || null
+      }
       previousResult.value = result.value
       previousResultCurrency.value = result.currency || null
     } catch (_error) {
@@ -153,7 +194,9 @@ export const useCalculator = () => {
               previousResultCurrency.value = result.currency || null
               return
             }
-          } catch (_e) { /* fall through to extractTrailingNumber */ }
+          } catch (_e) {
+            /* fall through to extractTrailingNumber */
+          }
         }
       }
 
@@ -179,7 +222,12 @@ export const useCalculator = () => {
     const cleanLower = cleanInput.toLowerCase().trim()
 
     // Variable assignment — check BEFORE sum/total to avoid "total = X" being caught as sum
-    if (cleanInput.includes('=') && !cleanInput.includes('==') && !cleanInput.includes('<=') && !cleanInput.includes('>=')) {
+    if (
+      cleanInput.includes('=') &&
+      !cleanInput.includes('==') &&
+      !cleanInput.includes('<=') &&
+      !cleanInput.includes('>=')
+    ) {
       const eqIdx = cleanInput.indexOf('=')
       const varName = cleanInput.substring(0, eqIdx).trim()
       const expression = cleanInput.substring(eqIdx + 1).trim()
@@ -202,7 +250,11 @@ export const useCalculator = () => {
             variables.value[varName] = { value: result.value, currency: lastPart }
           } else if (result.unit) {
             // Store unit metadata for unit-aware variables
-            variables.value[varName] = { value: result.value, unit: result.unit, category: result.category || null }
+            variables.value[varName] = {
+              value: result.value,
+              unit: result.unit,
+              category: result.category || null,
+            }
           } else {
             variables.value[varName] = result.value
           }
@@ -252,7 +304,11 @@ export const useCalculator = () => {
           const targetCurrency = currencyMap[targetStr.toLowerCase()] || targetStr.toUpperCase()
           if (exchangeRates.value[targetCurrency]) {
             const sum = calculateSumWithCurrency(index, allResults, targetCurrency, filter)
-            return { value: sum, display: `${formatResult(sum)} ${targetCurrency}`, currency: targetCurrency }
+            return {
+              value: sum,
+              display: `${formatResult(sum)} ${targetCurrency}`,
+              currency: targetCurrency,
+            }
           }
           const sum = calculateSum(index, allResults, filter)
           return { value: sum, display: `${formatResult(sum)} ${targetStr}` }
@@ -265,13 +321,19 @@ export const useCalculator = () => {
         return { value: result, display: formatResult(result) }
       }
 
-      const sumConvMatch = cleanInput.match(/^sum\s+(in|as)\s+([a-zA-Z€$£¥₹₽]+\d?|m\/s|km\/h|mi\/h|ft\/s)/i)
+      const sumConvMatch = cleanInput.match(
+        /^sum\s+(in|as)\s+([a-zA-Z€$£¥₹₽]+\d?|m\/s|km\/h|mi\/h|ft\/s)/i,
+      )
       if (sumConvMatch) {
         const targetStr = sumConvMatch[2].trim()
         const targetCurrency = currencyMap[targetStr.toLowerCase()] || targetStr.toUpperCase()
         if (exchangeRates.value[targetCurrency]) {
           const sum = calculateSumWithCurrency(index, allResults, targetCurrency)
-          return { value: sum, display: `${formatResult(sum)} ${targetCurrency}`, currency: targetCurrency }
+          return {
+            value: sum,
+            display: `${formatResult(sum)} ${targetCurrency}`,
+            currency: targetCurrency,
+          }
         }
         const sum = calculateSum(index, allResults)
         return { value: sum, display: `${formatResult(sum)} ${targetStr}` }
@@ -312,7 +374,11 @@ export const useCalculator = () => {
           const targetCurrency = currencyMap[targetStr.toLowerCase()] || targetStr.toUpperCase()
           if (exchangeRates.value[targetCurrency]) {
             const sub = calculateSubWithCurrency(index, allResults, targetCurrency, filter)
-            return { value: sub, display: `${formatResult(sub)} ${targetCurrency}`, currency: targetCurrency }
+            return {
+              value: sub,
+              display: `${formatResult(sub)} ${targetCurrency}`,
+              currency: targetCurrency,
+            }
           }
           const sub = calculateSub(index, allResults, filter)
           return { value: sub, display: `${formatResult(sub)} ${targetStr}` }
@@ -325,13 +391,19 @@ export const useCalculator = () => {
         return { value: result, display: formatResult(result) }
       }
 
-      const subConvMatch = cleanInput.match(/^sub\s+(in|as)\s+([a-zA-Z€$£¥₹₽]+\d?|m\/s|km\/h|mi\/h|ft\/s)/i)
+      const subConvMatch = cleanInput.match(
+        /^sub\s+(in|as)\s+([a-zA-Z€$£¥₹₽]+\d?|m\/s|km\/h|mi\/h|ft\/s)/i,
+      )
       if (subConvMatch) {
         const targetStr = subConvMatch[2].trim()
         const targetCurrency = currencyMap[targetStr.toLowerCase()] || targetStr.toUpperCase()
         if (exchangeRates.value[targetCurrency]) {
           const sub = calculateSubWithCurrency(index, allResults, targetCurrency)
-          return { value: sub, display: `${formatResult(sub)} ${targetCurrency}`, currency: targetCurrency }
+          return {
+            value: sub,
+            display: `${formatResult(sub)} ${targetCurrency}`,
+            currency: targetCurrency,
+          }
         }
         const sub = calculateSub(index, allResults)
         return { value: sub, display: `${formatResult(sub)} ${targetStr}` }
@@ -371,13 +443,17 @@ export const useCalculator = () => {
     }
 
     // Number format conversion: "X in hex/bin/oct/sci"
-    const formatConvMatch = cleanInput.match(/^(.+?)\s+in\s+(hex|bin|oct|binary|octal|hexadecimal|sci|scientific)$/i)
+    const formatConvMatch = cleanInput.match(
+      /^(.+?)\s+in\s+(hex|bin|oct|binary|octal|hexadecimal|sci|scientific)$/i,
+    )
     if (formatConvMatch) {
       const sourceExpr = formatConvMatch[1].trim()
       const targetFormat = formatConvMatch[2].toLowerCase()
       try {
         let value
-        try { value = evaluateMath(sourceExpr) } catch (_e) {
+        try {
+          value = evaluateMath(sourceExpr)
+        } catch (_e) {
           const unitResult = handleUnitExpression(sourceExpr)
           if (unitResult.hasUnit || unitResult.isConverted) value = unitResult.value
           else {
@@ -394,7 +470,9 @@ export const useCalculator = () => {
           return { value, display: `0o${intValue.toString(8)}` }
         if (targetFormat === 'sci' || targetFormat === 'scientific')
           return { value, display: value.toExponential() }
-      } catch (_e) { /* fall through */ }
+      } catch (_e) {
+        /* fall through */
+      }
     }
 
     // Unit conversion (try before currency since some overlap)
@@ -402,7 +480,9 @@ export const useCalculator = () => {
     if (unitResult.isConverted || unitResult.hasUnit) {
       return {
         value: unitResult.value,
-        display: unitResult.unit ? `${formatResult(unitResult.value)} ${unitResult.unit}` : formatResult(unitResult.value),
+        display: unitResult.unit
+          ? `${formatResult(unitResult.value)} ${unitResult.unit}`
+          : formatResult(unitResult.value),
         unit: unitResult.unit || null,
         category: unitResult.category || null,
         hideResult: unitResult.hasUnit && !unitResult.isConverted,
@@ -415,10 +495,17 @@ export const useCalculator = () => {
       // Hide when it's just a simple currency value with no operation (e.g., "$30", "100 EUR", "-£300")
       // Show when there's a conversion or arithmetic (e.g., "$30 in EUR", "$30 + €20", "price * 2")
       // Use lookbehind to only match infix operators (after a digit/letter/symbol), not prefix negation
-      const isCurrencyOperation = currencyResult.isConverted || /(?<=[\d\w€$£¥₹₽)])\s*[+\-*/]/.test(cleanInput) || /\b(times|multiplied\s+by|mul|plus|minus|subtract|without|divide|divide\s+by|and|with)\b/i.test(cleanInput)
+      const isCurrencyOperation =
+        currencyResult.isConverted ||
+        /(?<=[\d\w€$£¥₹₽)])\s*[+\-*/]/.test(cleanInput) ||
+        /\b(times|multiplied\s+by|mul|plus|minus|subtract|without|divide|divide\s+by|and|with)\b/i.test(
+          cleanInput,
+        )
       return {
         value: currencyResult.value,
-        display: currencyResult.currency ? `${formatResult(currencyResult.value)} ${currencyResult.currency}` : formatResult(currencyResult.value),
+        display: currencyResult.currency
+          ? `${formatResult(currencyResult.value)} ${currencyResult.currency}`
+          : formatResult(currencyResult.value),
         currency: currencyResult.currency || null,
         hideResult: !isCurrencyOperation,
       }
@@ -430,7 +517,14 @@ export const useCalculator = () => {
     if (divMatch) {
       const leftVar = variables.value[divMatch[1]]
       const rightVar = variables.value[divMatch[2]]
-      if (leftVar && rightVar && typeof leftVar === 'object' && typeof rightVar === 'object' && leftVar.unit && rightVar.unit) {
+      if (
+        leftVar &&
+        rightVar &&
+        typeof leftVar === 'object' &&
+        typeof rightVar === 'object' &&
+        leftVar.unit &&
+        rightVar.unit
+      ) {
         const dimResult = computeDimensionalDivision(leftVar, rightVar)
         if (dimResult) return dimResult
       }
@@ -441,7 +535,14 @@ export const useCalculator = () => {
     if (mulMatch) {
       const leftVar = variables.value[mulMatch[1]]
       const rightVar = variables.value[mulMatch[2]]
-      if (leftVar && rightVar && typeof leftVar === 'object' && typeof rightVar === 'object' && leftVar.unit && rightVar.unit) {
+      if (
+        leftVar &&
+        rightVar &&
+        typeof leftVar === 'object' &&
+        typeof rightVar === 'object' &&
+        leftVar.unit &&
+        rightVar.unit
+      ) {
         const dimResult = computeDimensionalMultiplication(leftVar, rightVar)
         if (dimResult) return dimResult
       }
@@ -469,7 +570,11 @@ export const useCalculator = () => {
       }
       if (sumCurrency) {
         const result = evaluateMath(handleFunctions(cleanInput))
-        return { value: result, display: `${formatResult(result)} ${sumCurrency}`, currency: sumCurrency }
+        return {
+          value: result,
+          display: `${formatResult(result)} ${sumCurrency}`,
+          currency: sumCurrency,
+        }
       }
     }
     const hasAvgToken = /\baverage\b/i.test(cleanInput) && !variables.value['average']
@@ -486,9 +591,14 @@ export const useCalculator = () => {
 
     // Hide result when input is just a plain number, variable, or constant — no operation performed
     const isPlainNumber = /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(cleanInput)
-    const isScaledNumber = /^-?\d+(\.\d+)?\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)$/i.test(cleanInput)
+    const isScaledNumber =
+      /^-?\d+(\.\d+)?\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)$/i.test(
+        cleanInput,
+      )
     const isHexBinOct = /^0[xXbBoO][0-9a-fA-F]+$/.test(cleanInput)
-    const isVariableRef = /^[a-zA-Z_]\w*$/.test(cleanInput) && (variables.value[cleanInput] !== undefined || /^(pi|e|tau|phi|prev)$/i.test(cleanInput))
+    const isVariableRef =
+      /^[a-zA-Z_]\w*$/.test(cleanInput) &&
+      (variables.value[cleanInput] !== undefined || /^(pi|e|tau|phi|prev)$/i.test(cleanInput))
     const hideResult = isPlainNumber || isScaledNumber || isHexBinOct || isVariableRef
 
     return { value, display: formatResult(value), hideResult }

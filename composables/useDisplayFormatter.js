@@ -69,7 +69,9 @@ const applyPrecision = (numStr, prefs) => {
   if (precisionMode === 'decimals') {
     if (Number.isInteger(num)) return num.toString()
     if (roundingMode === 'truncate') {
-      return truncateToDecimals(num, decimalPlaces).toString().replace(/\.?0+$/, '')
+      return truncateToDecimals(num, decimalPlaces)
+        .toString()
+        .replace(/\.?0+$/, '')
     }
     return num.toFixed(decimalPlaces).replace(/0+$/, '').replace(/\.$/, '')
   }
@@ -99,11 +101,21 @@ const formatDate = (date, dateFormat, includeTime, timeFormat) => {
 
   let datePart
   switch (dateFormat) {
-    case 'MM/DD/YYYY': datePart = `${mm}/${dd}/${yyyy}`; break
-    case 'YYYY/MM/DD': datePart = `${yyyy}/${mm}/${dd}`; break
-    case 'DD.MM.YYYY': datePart = `${dd}.${mm}.${yyyy}`; break
-    case 'YYYY-MM-DD': datePart = `${yyyy}-${mm}-${dd}`; break
-    default: datePart = `${dd}/${mm}/${yyyy}`; break // DD/MM/YYYY
+    case 'MM/DD/YYYY':
+      datePart = `${mm}/${dd}/${yyyy}`
+      break
+    case 'YYYY/MM/DD':
+      datePart = `${yyyy}/${mm}/${dd}`
+      break
+    case 'DD.MM.YYYY':
+      datePart = `${dd}.${mm}.${yyyy}`
+      break
+    case 'YYYY-MM-DD':
+      datePart = `${yyyy}-${mm}-${dd}`
+      break
+    default:
+      datePart = `${dd}/${mm}/${yyyy}`
+      break // DD/MM/YYYY
   }
 
   if (!includeTime) return datePart
@@ -141,7 +153,8 @@ const LOCALE_TIME_RE = /^(\d{1,2}):(\d{2})\s+(AM|PM)$/i
 /**
  * Check if a string looks like a duration (e.g. "5 days", "3.5 days", "12 hours").
  */
-const DURATION_RE = /^([\d.]+)\s+(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)$/
+const DURATION_RE =
+  /^([\d.]+)\s+(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)$/
 
 /**
  * Check if a string is a special format that should not be touched.
@@ -227,7 +240,11 @@ export const formatDisplay = (display, value, prefs) => {
 
   // 6. Plain number
   const plainNum = parseFloat(display)
-  if (!isNaN(plainNum) && display.trim() === String(display.trim()) && /^-?[\d.]+(?:e[+-]?\d+)?$/.test(display.trim())) {
+  if (
+    !isNaN(plainNum) &&
+    display.trim() === String(display.trim()) &&
+    /^-?[\d.]+(?:e[+-]?\d+)?$/.test(display.trim())
+  ) {
     const numPart = applyPrecision(display.trim(), prefs)
     return formatNumberString(numPart, numberFormat)
   }

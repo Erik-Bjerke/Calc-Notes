@@ -1,10 +1,18 @@
 // Currency parsing, conversion, and exchange rate fetching
-import { currencyMap, exchangeRates, ratesFetched, variables, previousResult, previousResultCurrency } from './constants'
+import {
+  currencyMap,
+  exchangeRates,
+  ratesFetched,
+  variables,
+  previousResult,
+  previousResultCurrency,
+} from './constants'
 import { SCALE_SUFFIX, SCALED_NUM_RE, applyScale } from './scales'
 import { evaluateMath } from './math'
 
 // Regex for matching code-based currency amounts like "56 EUR", "2k usd", "1.5M gbp", "56EUR"
-const CODE_CURRENCY_RE = /(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([a-zA-Z]+)/g
+const CODE_CURRENCY_RE =
+  /(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([a-zA-Z]+)/g
 
 // Replace code-based currency amounts (e.g. "56 EUR") with their USD value in an expression
 const replaceCodeCurrencies = (expr, targetCurrency) => {
@@ -56,11 +64,14 @@ export const fetchExchangeRates = async () => {
       applyRates({ ...data.rates })
       return
     }
-  } catch { /* fall through to secondary */ }
+  } catch {
+    /* fall through to secondary */
+  }
 
   // Secondary: fawazahmed0/exchange-api
   const fawazPrimary = 'https://latest.currency-api.pages.dev/v1/currencies/usd.min.json'
-  const fawazFallback = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.min.json'
+  const fawazFallback =
+    'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.min.json'
 
   try {
     let data
@@ -78,7 +89,9 @@ export const fetchExchangeRates = async () => {
       applyRates(rates)
       return
     }
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
 
   console.warn('Failed to fetch exchange rates from all providers, using hardcoded fallback values')
 }
@@ -140,24 +153,36 @@ const collectCurrencies = (symbolMatches, currencyVarsInExpr, codeCurrencyMatche
 // Replace all currency tokens in an expression with numeric values.
 // If allSameCurrency is true, just strip symbols and use raw values.
 // If mixed, convert everything to USD for intermediate calculation.
-const replaceCurrencyTokens = (expr, symbolMatches, currencyVarsInExpr, codeCurrencyMatches, allSameCurrency) => {
+const replaceCurrencyTokens = (
+  expr,
+  symbolMatches,
+  currencyVarsInExpr,
+  codeCurrencyMatches,
+  allSameCurrency,
+) => {
   let result = expr
 
   // Match prefix symbols: €50, $2k
-  result = result.replace(/([€$£¥₹₽])\s*(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?/g, (_, symbol, num, scale) => {
-    const cur = currencyMap[symbol]
-    const val = applyScale(num, scale)
-    if (allSameCurrency) return `(${val})`
-    return `(${val / exchangeRates.value[cur]})`
-  })
+  result = result.replace(
+    /([€$£¥₹₽])\s*(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?/g,
+    (_, symbol, num, scale) => {
+      const cur = currencyMap[symbol]
+      const val = applyScale(num, scale)
+      if (allSameCurrency) return `(${val})`
+      return `(${val / exchangeRates.value[cur]})`
+    },
+  )
 
   // Match postfix symbols: 50€, 2k$
-  result = result.replace(/(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([€$£¥₹₽])/g, (_, num, scale, symbol) => {
-    const cur = currencyMap[symbol]
-    const val = applyScale(num, scale)
-    if (allSameCurrency) return `(${val})`
-    return `(${val / exchangeRates.value[cur]})`
-  })
+  result = result.replace(
+    /(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([€$£¥₹₽])/g,
+    (_, num, scale, symbol) => {
+      const cur = currencyMap[symbol]
+      const val = applyScale(num, scale)
+      if (allSameCurrency) return `(${val})`
+      return `(${val / exchangeRates.value[cur]})`
+    },
+  )
 
   for (const cv of currencyVarsInExpr) {
     const regex = new RegExp(`\\b${cv.name}\\b`, 'gi')
@@ -168,7 +193,14 @@ const replaceCurrencyTokens = (expr, symbolMatches, currencyVarsInExpr, codeCurr
     }
   }
 
-  result = replaceCodeCurrencies(result, allSameCurrency ? currencyVarsInExpr[0]?.currency || symbolMatches[0]?.currency || codeCurrencyMatches[0]?.currency : null)
+  result = replaceCodeCurrencies(
+    result,
+    allSameCurrency
+      ? currencyVarsInExpr[0]?.currency ||
+          symbolMatches[0]?.currency ||
+          codeCurrencyMatches[0]?.currency
+      : null,
+  )
 
   return result
 }
@@ -187,7 +219,12 @@ export const handleCurrencyExpression = (input) => {
       const parsed = parseCurrency(sourceExpr)
       if (parsed && !parsed.rest) {
         if (parsed.currency === targetCurrency) {
-          return { value: parsed.value, currency: targetCurrency, hasCurrency: true, isConverted: false }
+          return {
+            value: parsed.value,
+            currency: targetCurrency,
+            hasCurrency: true,
+            isConverted: false,
+          }
         }
         const converted = convertCurrency(parsed.value, parsed.currency, targetCurrency)
         return { value: converted, currency: targetCurrency, hasCurrency: true, isConverted: true }
@@ -208,9 +245,17 @@ export const handleCurrencyExpression = (input) => {
       }
 
       // Also treat 'prev' as a currency variable if it has currency metadata
-      if (/\bprev\b/i.test(sourceExpr) && previousResult.value !== null && previousResultCurrency.value) {
+      if (
+        /\bprev\b/i.test(sourceExpr) &&
+        previousResult.value !== null &&
+        previousResultCurrency.value
+      ) {
         hasCurrencyVars = true
-        cvarsInSource.push({ name: 'prev', value: previousResult.value, currency: previousResultCurrency.value })
+        cvarsInSource.push({
+          name: 'prev',
+          value: previousResult.value,
+          currency: previousResultCurrency.value,
+        })
       }
 
       const codeMatches = findCodeCurrencyMatches(sourceExpr)
@@ -219,15 +264,25 @@ export const handleCurrencyExpression = (input) => {
       if (hasCurrencySymbols || hasCurrencyVars || hasCodeCurrencies) {
         const symbolMatches = []
         // Match prefix symbols: €50, $2k
-        const symPreRe = /([€$£¥₹₽])\s*(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?/g
+        const symPreRe =
+          /([€$£¥₹₽])\s*(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?/g
         let sm
         while ((sm = symPreRe.exec(sourceExpr)) !== null) {
-          symbolMatches.push({ symbol: sm[1], value: applyScale(sm[2], sm[3]), currency: currencyMap[sm[1]] })
+          symbolMatches.push({
+            symbol: sm[1],
+            value: applyScale(sm[2], sm[3]),
+            currency: currencyMap[sm[1]],
+          })
         }
         // Match postfix symbols: 50€, 2k$
-        const symPostRe = /(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([€$£¥₹₽])/g
+        const symPostRe =
+          /(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([€$£¥₹₽])/g
         while ((sm = symPostRe.exec(sourceExpr)) !== null) {
-          symbolMatches.push({ symbol: sm[3], value: applyScale(sm[1], sm[2]), currency: currencyMap[sm[3]] })
+          symbolMatches.push({
+            symbol: sm[3],
+            value: applyScale(sm[1], sm[2]),
+            currency: currencyMap[sm[3]],
+          })
         }
 
         const allCurrencies = collectCurrencies(symbolMatches, cvarsInSource, codeMatches)
@@ -235,33 +290,63 @@ export const handleCurrencyExpression = (input) => {
 
         if (allSame) {
           // All source values are already in the target currency — just strip symbols and do plain math
-          const expr = replaceCurrencyTokens(sourceExpr, symbolMatches, cvarsInSource, codeMatches, true)
+          const expr = replaceCurrencyTokens(
+            sourceExpr,
+            symbolMatches,
+            cvarsInSource,
+            codeMatches,
+            true,
+          )
           try {
             const result = evaluateMath(expr)
-            return { value: result, currency: targetCurrency, hasCurrency: true, isConverted: false }
-          } catch (_e) { /* fall through */ }
+            return {
+              value: result,
+              currency: targetCurrency,
+              hasCurrency: true,
+              isConverted: false,
+            }
+          } catch (_e) {
+            /* fall through */
+          }
         }
 
         // Mixed currencies — convert through USD
-        const expr = replaceCurrencyTokens(sourceExpr, symbolMatches, cvarsInSource, codeMatches, false)
+        const expr = replaceCurrencyTokens(
+          sourceExpr,
+          symbolMatches,
+          cvarsInSource,
+          codeMatches,
+          false,
+        )
         try {
           const usdResult = evaluateMath(expr)
           const converted = usdResult * exchangeRates.value[targetCurrency]
-          return { value: converted, currency: targetCurrency, hasCurrency: true, isConverted: true }
-        } catch (_e) { /* fall through */ }
+          return {
+            value: converted,
+            currency: targetCurrency,
+            hasCurrency: true,
+            isConverted: true,
+          }
+        } catch (_e) {
+          /* fall through */
+        }
       }
 
       try {
         const value = evaluateMath(sourceExpr)
         const converted = convertCurrency(value, 'USD', targetCurrency)
         return { value: converted, currency: targetCurrency, hasCurrency: true, isConverted: true }
-      } catch (_e) { /* fall through */ }
+      } catch (_e) {
+        /* fall through */
+      }
     }
   }
 
   // Currency arithmetic: "$30 + €20", "$2k + €500", "$1.5M - €200k", "30€ + 20$", "3€ + $2"
   // Match prefix or postfix symbol on each operand
-  const currArithMatch = input.match(/^(?:([€$£¥₹₽])\s*(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?|(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([€$£¥₹₽]))\s*([+\-*/])\s*(?:([€$£¥₹₽])\s*(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?|(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([€$£¥₹₽]))$/)
+  const currArithMatch = input.match(
+    /^(?:([€$£¥₹₽])\s*(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?|(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([€$£¥₹₽]))\s*([+\-*/])\s*(?:([€$£¥₹₽])\s*(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?|(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([€$£¥₹₽]))$/,
+  )
   if (currArithMatch) {
     // First operand: prefix groups [1,2,3] or postfix groups [4,5,6]
     const sym1 = currArithMatch[1] || currArithMatch[6]
@@ -316,25 +401,40 @@ export const handleCurrencyExpression = (input) => {
 
   // Also treat 'prev' as a currency variable if it has currency metadata
   if (/\bprev\b/i.test(input) && previousResult.value !== null && previousResultCurrency.value) {
-    currencyVarsInExpr.push({ name: 'prev', value: previousResult.value, currency: previousResultCurrency.value })
+    currencyVarsInExpr.push({
+      name: 'prev',
+      value: previousResult.value,
+      currency: previousResultCurrency.value,
+    })
   }
 
   const symbolMatches = []
   // Match prefix symbols: €50, $2k
-  const symbolRegex = /([€$£¥₹₽])\s*(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?/g
+  const symbolRegex =
+    /([€$£¥₹₽])\s*(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?/g
   let sMatch
   while ((sMatch = symbolRegex.exec(input)) !== null) {
-    symbolMatches.push({ symbol: sMatch[1], value: applyScale(sMatch[2], sMatch[3]), currency: currencyMap[sMatch[1]] })
+    symbolMatches.push({
+      symbol: sMatch[1],
+      value: applyScale(sMatch[2], sMatch[3]),
+      currency: currencyMap[sMatch[1]],
+    })
   }
   // Match postfix symbols: 50€, 2k$
-  const postfixSymbolRegex = /(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([€$£¥₹₽])/g
+  const postfixSymbolRegex =
+    /(\d+(?:\.\d+)?)\s*([kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\s*([€$£¥₹₽])/g
   while ((sMatch = postfixSymbolRegex.exec(input)) !== null) {
-    symbolMatches.push({ symbol: sMatch[3], value: applyScale(sMatch[1], sMatch[2]), currency: currencyMap[sMatch[3]] })
+    symbolMatches.push({
+      symbol: sMatch[3],
+      value: applyScale(sMatch[1], sMatch[2]),
+      currency: currencyMap[sMatch[3]],
+    })
   }
 
   const codeCurrencyMatches = findCodeCurrencyMatches(input)
 
-  const hasCurrencyContext = currencyVarsInExpr.length > 0 || symbolMatches.length > 0 || codeCurrencyMatches.length > 0
+  const hasCurrencyContext =
+    currencyVarsInExpr.length > 0 || symbolMatches.length > 0 || codeCurrencyMatches.length > 0
 
   if (hasCurrencyContext) {
     // Determine primary currency by what appears first in the expression
@@ -342,23 +442,41 @@ export const handleCurrencyExpression = (input) => {
     if (currencyVarsInExpr.length > 0) {
       primaryCurrency = currencyVarsInExpr[0].currency
     } else {
-      const firstSymbolIdx = symbolMatches.length > 0 ? input.indexOf(symbolMatches[0].symbol) : Infinity
-      const firstCodeIdx = codeCurrencyMatches.length > 0 ? input.search(new RegExp(`\\d[\\d.]*\\s*(?:[kKM]|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\\s*${codeCurrencyMatches[0].currency}`, 'i')) : Infinity
-      primaryCurrency = firstSymbolIdx <= firstCodeIdx
-        ? symbolMatches[0].currency
-        : codeCurrencyMatches[0].currency
+      const firstSymbolIdx =
+        symbolMatches.length > 0 ? input.indexOf(symbolMatches[0].symbol) : Infinity
+      const firstCodeIdx =
+        codeCurrencyMatches.length > 0
+          ? input.search(
+              new RegExp(
+                `\\d[\\d.]*\\s*(?:[kKM]|thousand|thousands|million|millions|billion|billions|trillion|trillions)?\\s*${codeCurrencyMatches[0].currency}`,
+                'i',
+              ),
+            )
+          : Infinity
+      primaryCurrency =
+        firstSymbolIdx <= firstCodeIdx ? symbolMatches[0].currency : codeCurrencyMatches[0].currency
     }
 
     const allCurrencies = collectCurrencies(symbolMatches, currencyVarsInExpr, codeCurrencyMatches)
     const allSameCurrency = allCurrencies.size === 1
 
-    let expr = replaceCurrencyTokens(input, symbolMatches, currencyVarsInExpr, codeCurrencyMatches, allSameCurrency)
+    let expr = replaceCurrencyTokens(
+      input,
+      symbolMatches,
+      currencyVarsInExpr,
+      codeCurrencyMatches,
+      allSameCurrency,
+    )
 
     try {
       const mathResult = evaluateMath(expr)
-      const finalValue = allSameCurrency ? mathResult : mathResult * exchangeRates.value[primaryCurrency]
+      const finalValue = allSameCurrency
+        ? mathResult
+        : mathResult * exchangeRates.value[primaryCurrency]
       return { value: finalValue, currency: primaryCurrency, hasCurrency: true, isConverted: false }
-    } catch (_e) { /* fall through */ }
+    } catch (_e) {
+      /* fall through */
+    }
   }
 
   return noResult

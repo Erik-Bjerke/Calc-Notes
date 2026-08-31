@@ -33,8 +33,12 @@ export const useOnlineStatus = () => {
       })
     } else {
       // Web: standard browser events
-      window.addEventListener('online', () => { _isOnline.value = true })
-      window.addEventListener('offline', () => { _isOnline.value = false })
+      window.addEventListener('online', () => {
+        _isOnline.value = true
+      })
+      window.addEventListener('offline', () => {
+        _isOnline.value = false
+      })
     }
   }
 

@@ -8,7 +8,7 @@ export const useTemplates = () => {
       content: `# Price per Unit
 total = $10
 quantity = 2.5
-price_per_unit = total / quantity`
+price_per_unit = total / quantity`,
     },
     {
       id: 'discount',
@@ -18,7 +18,7 @@ price_per_unit = total / quantity`
       content: `# Discount
 original = $100
 discount = 20%
-final = original - discount`
+final = original - discount`,
     },
     {
       id: 'percentage-examples',
@@ -65,7 +65,7 @@ total = subtotal + tax
 // Real-World: Tip
 bill = $85
 tip = 18% of bill
-total = bill + 18%`
+total = bill + 18%`,
     },
     {
       id: 'tip',
@@ -75,7 +75,7 @@ total = bill + 18%`
       content: `# Tip Calculator
 bill = $50
 tip = 15% of bill
-total = bill + tip`
+total = bill + tip`,
     },
     {
       id: 'split-bill',
@@ -86,7 +86,7 @@ total = bill + tip`
 subtotal = $120
 total = subtotal + 18%
 people = 4
-per_person = total / people`
+per_person = total / people`,
     },
     {
       id: 'vat',
@@ -96,7 +96,7 @@ per_person = total / people`
       content: `# VAT Calculator
 price = $100
 vat = 20% of price
-total = price + vat`
+total = price + vat`,
     },
     {
       id: 'unit-price',
@@ -112,7 +112,7 @@ unit_a = price_a / size_a
 // Package B
 price_b = $8
 size_b = 1000
-unit_b = price_b / size_b`
+unit_b = price_b / size_b`,
     },
     {
       id: 'currency-trip',
@@ -128,7 +128,7 @@ budget in JPY
 // Mixed Currency Math
 hotel = €80
 flights = $450
-hotel + flights in GBP`
+hotel + flights in GBP`,
     },
     {
       id: 'currency-scales',
@@ -147,7 +147,7 @@ profit = revenue - costs
 
 // Convert Scaled Currency
 $2k in EUR
-£1 million in USD`
+£1 million in USD`,
     },
     {
       id: 'fuel-economy',
@@ -170,7 +170,7 @@ $2k in EUR
 // Trip fuel calculation
 distance = 200 km
 efficiency = 10 kpl
-fuel = distance / efficiency`
+fuel = distance / efficiency`,
     },
     {
       id: 'fuel-cost',
@@ -182,7 +182,7 @@ distance = 100 miles
 mileage = 30 mpg
 fuel = distance / mileage
 price_per_gallon = $3.50
-cost = fuel * price_per_gallon`
+cost = fuel * price_per_gallon`,
     },
     {
       id: 'compound-interest',
@@ -193,7 +193,7 @@ cost = fuel * price_per_gallon`
 starting = $1000
 interest = 110%
 years = 3
-final = starting * interest ^ years`
+final = starting * interest ^ years`,
     },
     {
       id: 'loan-payment',
@@ -205,7 +205,7 @@ loan = $10000
 annual_rate = 0.05
 months = 12
 monthly_rate = annual_rate / 12
-monthly_payment = loan * (monthly_rate * (1 + monthly_rate)^months) / ((1 + monthly_rate)^months - 1)`
+monthly_payment = loan * (monthly_rate * (1 + monthly_rate)^months) / ((1 + monthly_rate)^months - 1)`,
     },
     {
       id: 'savings',
@@ -215,7 +215,7 @@ monthly_payment = loan * (monthly_rate * (1 + monthly_rate)^months) / ((1 + mont
       content: `# Savings Goal
 goal = $5000
 months = 12
-monthly = goal / months`
+monthly = goal / months`,
     },
     {
       id: 'budget',
@@ -229,7 +229,7 @@ Fuel: €100
 Car insurance: €60
 Hobbies: €30
 Fun: €100
-Remaining: sub`
+Remaining: sub`,
     },
     {
       id: 'invoice',
@@ -244,7 +244,7 @@ Hosting setup: $150
 Subtotal: sum
 
 Tax: prev * 8.5%
-Total: prev + Subtotal`
+Total: prev + Subtotal`,
     },
     {
       id: 'bmi',
@@ -254,7 +254,7 @@ Total: prev + Subtotal`
       content: `# BMI Calculator
 weight = 70
 height = 1.75
-bmi = weight / (height ^ 2)`
+bmi = weight / (height ^ 2)`,
     },
     {
       id: 'age',
@@ -263,7 +263,7 @@ bmi = weight / (height ^ 2)`
       category: 'planning',
       content: `# Age Calculator
 birthdate = today - 30 years
-days_since = today - birthdate`
+days_since = today - birthdate`,
     },
     {
       id: 'time-until',
@@ -280,7 +280,7 @@ tomorrow
 yesterday
 next week
 next month
-next year`
+next year`,
     },
     {
       id: 'timezone',
@@ -295,7 +295,7 @@ time in Tokyo
 
 // Unix Timestamp
 fromunix(1446587186)
-fromunix(0)`
+fromunix(0)`,
     },
     {
       id: 'hourly-rate',
@@ -306,7 +306,7 @@ fromunix(0)`
 monthly_salary = $3000
 hours_per_week = 40
 weeks_per_month = 4.33
-hourly = monthly_salary / (hours_per_week * weeks_per_month)`
+hourly = monthly_salary / (hours_per_week * weeks_per_month)`,
     },
     {
       id: 'project-time',
@@ -321,7 +321,7 @@ total = hours * hourly_rate
 // Time Conversions
 1 week in hours
 2.5 hours in minutes
-1 year in days`
+1 year in days`,
     },
     {
       id: 'cooking-scale',
@@ -337,7 +337,7 @@ scale = new_servings / original_servings
 flour = 200
 sugar = 100
 flour * scale
-sugar * scale`
+sugar * scale`,
     },
     {
       id: 'cooking-conversions',
@@ -361,7 +361,7 @@ sugar * scale`
 
 // Weight
 1 oz in g
-1 lb in kg`
+1 lb in kg`,
     },
     {
       id: 'area-room',
@@ -376,7 +376,7 @@ area in sqft
 
 // Other Area Conversions
 1 acre in sqm
-1 hectare in acres`
+1 hectare in acres`,
     },
     {
       id: 'paint',
@@ -390,7 +390,7 @@ wall_area = wall_height * wall_lengths
 coverage_per_liter = 10
 liters_needed = wall_area / coverage_per_liter
 price_per_liter = $15
-cost = liters_needed * price_per_liter`
+cost = liters_needed * price_per_liter`,
     },
     {
       id: 'unit-conversions',
@@ -422,7 +422,7 @@ cost = liters_needed * price_per_liter`
 1 TB in GB
 1 GiB in MiB
 1 byte in bits
-1 KiB in bytes`
+1 KiB in bytes`,
     },
     {
       id: 'data-transfer',
@@ -434,7 +434,7 @@ file_size = 5 GB
 file_size in MB
 speed = 100
 time_seconds = file_size in MB / speed
-time_minutes = time_seconds / 60`
+time_minutes = time_seconds / 60`,
     },
     {
       id: 'css-units',
@@ -454,7 +454,7 @@ em = 20
 
 // Custom PPI
 ppi = 326
-1 cm in px`
+1 cm in px`,
     },
     {
       id: 'number-formats',
@@ -477,7 +477,7 @@ ppi = 326
 8 in oct
 
 // Scientific Notation
-5300 in sci`
+5300 in sci`,
     },
     {
       id: 'bitwise',
@@ -496,7 +496,7 @@ ppi = 326
 
 // Combine with hex
 0xFF & 0x0F
-0xFF | 0x0F`
+0xFF | 0x0F`,
     },
     {
       id: 'math-functions',
@@ -526,7 +526,7 @@ log 10 (1000)
 pi
 e
 tau
-phi`
+phi`,
     },
     {
       id: 'trigonometry',
@@ -551,7 +551,7 @@ tanh(1)
 
 // Angular Conversion
 180 degrees in radians
-90° in radians`
+90° in radians`,
     },
     {
       id: 'scales-and-big-numbers',
@@ -569,7 +569,7 @@ tanh(1)
 2k meters in km
 5k seconds in hours
 500k bytes in MB
-1 million seconds in days`
+1 million seconds in days`,
     },
     {
       id: 'sum-and-average',
@@ -611,7 +611,7 @@ average
 // Sum with Operations
 100
 200
-sum - 10%`
+sum - 10%`,
     },
     {
       id: 'variables-and-prev',
@@ -630,7 +630,7 @@ prev - 5%
 
 // Labels with Prev
 Cost: $20 + $56
-Discounted: prev - 10%`
+Discounted: prev - 10%`,
     },
     {
       id: 'word-operators',
@@ -649,7 +649,7 @@ Discounted: prev - 10%`
 5 with 3
 10 without 3
 10 subtract 3
-8 multiplied by 9`
+8 multiplied by 9`,
     },
   ]
 
@@ -670,17 +670,17 @@ Discounted: prev - 10%`
 
   const getTemplates = (category = 'all') => {
     if (category === 'all') return templates
-    return templates.filter(t => t.category === category)
+    return templates.filter((t) => t.category === category)
   }
 
   const getTemplate = (id) => {
-    return templates.find(t => t.id === id)
+    return templates.find((t) => t.id === id)
   }
 
   return {
     templates,
     categories,
     getTemplates,
-    getTemplate
+    getTemplate,
   }
 }

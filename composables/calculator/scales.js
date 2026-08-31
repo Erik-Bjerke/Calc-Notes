@@ -1,7 +1,8 @@
 // Scale helpers for parsing shorthand big numbers (2k, 1.5M, 3 million, etc.)
 import { scales } from './constants'
 
-export const SCALE_SUFFIX = '(?:[kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)'
+export const SCALE_SUFFIX =
+  '(?:[kK]|M|thousand|thousands|million|millions|billion|billions|trillion|trillions)'
 export const SCALED_NUM_RE = `(-?\\d+(?:\\.\\d+)?)\\s*(${SCALE_SUFFIX})?`
 
 // Resolve a number string + optional scale suffix to a numeric value

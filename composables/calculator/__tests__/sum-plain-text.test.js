@@ -22,12 +22,7 @@ describe('sum with plain text lines (no colon/equals)', () => {
 
   it('sums plain text lines without currency', () => {
     const { evaluateLines } = useCalculator()
-    const results = evaluateLines([
-      'apples 50',
-      'bananas 30',
-      'oranges 20',
-      'sum',
-    ])
+    const results = evaluateLines(['apples 50', 'bananas 30', 'oranges 20', 'sum'])
 
     const sumLine = results[3]
     expect(sumLine.result).not.toBeNull()
@@ -37,12 +32,7 @@ describe('sum with plain text lines (no colon/equals)', () => {
 
   it('sums mixed plain text and calculation lines', () => {
     const { evaluateLines } = useCalculator()
-    const results = evaluateLines([
-      'rent 1200 eur',
-      '500 eur',
-      'groceries 300 eur',
-      'sum',
-    ])
+    const results = evaluateLines(['rent 1200 eur', '500 eur', 'groceries 300 eur', 'sum'])
 
     const sumLine = results[3]
     expect(sumLine.result).not.toBeNull()
@@ -52,11 +42,7 @@ describe('sum with plain text lines (no colon/equals)', () => {
 
   it('detects currency from plain text lines for sum', () => {
     const { evaluateLines } = useCalculator()
-    const results = evaluateLines([
-      'Arwen 900 eur',
-      'Kaisa 900 eur',
-      'sum',
-    ])
+    const results = evaluateLines(['Arwen 900 eur', 'Kaisa 900 eur', 'sum'])
 
     const sumLine = results[2]
     expect(sumLine.result).toContain('EUR')
@@ -64,11 +50,7 @@ describe('sum with plain text lines (no colon/equals)', () => {
 
   it('handles lines with only text (no number) gracefully', () => {
     const { evaluateLines } = useCalculator()
-    const results = evaluateLines([
-      'some header text',
-      'item 100 eur',
-      'sum',
-    ])
+    const results = evaluateLines(['some header text', 'item 100 eur', 'sum'])
 
     // "some header text" has no number, so sum should only count "item 100 eur"
     // But sum stops at empty lines, not at lines without results

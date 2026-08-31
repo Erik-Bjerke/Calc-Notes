@@ -29,19 +29,58 @@ export const formatResult = (value) => {
 export const handlePercentages = (expr) => {
   let expression = expr
 
-  expression = expression.replace(/(\d+(?:\.\d+)?)\s*as\s+a\s*%\s*of\s*(\d+(?:\.\d+)?)/gi, (_, x, y) => `((${x} / ${y}) * 100)`)
-  expression = expression.replace(/(\d+(?:\.\d+)?)\s*as\s+a\s*%\s*on\s*(\d+(?:\.\d+)?)/gi, (_, x, y) => `(((${x} - ${y}) / ${y}) * 100)`)
-  expression = expression.replace(/(\d+(?:\.\d+)?)\s*as\s+a\s*%\s*off\s*(\d+(?:\.\d+)?)/gi, (_, x, y) => `(((${y} - ${x}) / ${y}) * 100)`)
-  expression = expression.replace(/(\d+(?:\.\d+)?)\s*%\s*of\s+what\s+is\s+(\d+(?:\.\d+)?)/gi, (_, p, v) => `(${v} / (${p} / 100))`)
-  expression = expression.replace(/(\d+(?:\.\d+)?)\s*%\s*on\s+what\s+is\s+(\d+(?:\.\d+)?)/gi, (_, p, v) => `(${v} / (1 + ${p} / 100))`)
-  expression = expression.replace(/(\d+(?:\.\d+)?)\s*%\s*off\s+what\s+is\s+(\d+(?:\.\d+)?)/gi, (_, p, v) => `(${v} / (1 - ${p} / 100))`)
-  expression = expression.replace(/(\d+(?:\.\d+)?)\s*%\s*of\s*(\([^)]+\)|\d+(?:\.\d+)?)/g, (_, p, v) => `((${p} / 100) * ${v})`)
-  expression = expression.replace(/(\d+(?:\.\d+)?)\s*%\s*on\s*(\([^)]+\)|\d+(?:\.\d+)?)/g, (_, p, v) => `(${v} + (${v} * ${p} / 100))`)
-  expression = expression.replace(/(\d+(?:\.\d+)?)\s*%\s*off\s*(\([^)]+\)|\d+(?:\.\d+)?)/g, (_, p, v) => `(${v} - (${v} * ${p} / 100))`)
-  expression = expression.replace(/(\([^)]+\)|\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)\s*%(?!\s*\^)/g, (_, b, p) => `(${b} + (${b} * ${p} / 100))`)
-  expression = expression.replace(/(\([^)]+\)|\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*%(?!\s*\^)/g, (_, b, p) => `(${b} - (${b} * ${p} / 100))`)
-  expression = expression.replace(/(\([^)]+\)|\d+(?:\.\d+)?)\s*\*\s*(\d+(?:\.\d+)?)\s*%(?!\s*\^)/g, (_, b, p) => `(${b} * ${p} / 100)`)
-  expression = expression.replace(/(\([^)]+\)|\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)\s*%(?!\s*\^)/g, (_, b, p) => `(${b} / (${p} / 100))`)
+  expression = expression.replace(
+    /(\d+(?:\.\d+)?)\s*as\s+a\s*%\s*of\s*(\d+(?:\.\d+)?)/gi,
+    (_, x, y) => `((${x} / ${y}) * 100)`,
+  )
+  expression = expression.replace(
+    /(\d+(?:\.\d+)?)\s*as\s+a\s*%\s*on\s*(\d+(?:\.\d+)?)/gi,
+    (_, x, y) => `(((${x} - ${y}) / ${y}) * 100)`,
+  )
+  expression = expression.replace(
+    /(\d+(?:\.\d+)?)\s*as\s+a\s*%\s*off\s*(\d+(?:\.\d+)?)/gi,
+    (_, x, y) => `(((${y} - ${x}) / ${y}) * 100)`,
+  )
+  expression = expression.replace(
+    /(\d+(?:\.\d+)?)\s*%\s*of\s+what\s+is\s+(\d+(?:\.\d+)?)/gi,
+    (_, p, v) => `(${v} / (${p} / 100))`,
+  )
+  expression = expression.replace(
+    /(\d+(?:\.\d+)?)\s*%\s*on\s+what\s+is\s+(\d+(?:\.\d+)?)/gi,
+    (_, p, v) => `(${v} / (1 + ${p} / 100))`,
+  )
+  expression = expression.replace(
+    /(\d+(?:\.\d+)?)\s*%\s*off\s+what\s+is\s+(\d+(?:\.\d+)?)/gi,
+    (_, p, v) => `(${v} / (1 - ${p} / 100))`,
+  )
+  expression = expression.replace(
+    /(\d+(?:\.\d+)?)\s*%\s*of\s*(\([^)]+\)|\d+(?:\.\d+)?)/g,
+    (_, p, v) => `((${p} / 100) * ${v})`,
+  )
+  expression = expression.replace(
+    /(\d+(?:\.\d+)?)\s*%\s*on\s*(\([^)]+\)|\d+(?:\.\d+)?)/g,
+    (_, p, v) => `(${v} + (${v} * ${p} / 100))`,
+  )
+  expression = expression.replace(
+    /(\d+(?:\.\d+)?)\s*%\s*off\s*(\([^)]+\)|\d+(?:\.\d+)?)/g,
+    (_, p, v) => `(${v} - (${v} * ${p} / 100))`,
+  )
+  expression = expression.replace(
+    /(\([^)]+\)|\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)\s*%(?!\s*\^)/g,
+    (_, b, p) => `(${b} + (${b} * ${p} / 100))`,
+  )
+  expression = expression.replace(
+    /(\([^)]+\)|\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*%(?!\s*\^)/g,
+    (_, b, p) => `(${b} - (${b} * ${p} / 100))`,
+  )
+  expression = expression.replace(
+    /(\([^)]+\)|\d+(?:\.\d+)?)\s*\*\s*(\d+(?:\.\d+)?)\s*%(?!\s*\^)/g,
+    (_, b, p) => `(${b} * ${p} / 100)`,
+  )
+  expression = expression.replace(
+    /(\([^)]+\)|\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)\s*%(?!\s*\^)/g,
+    (_, b, p) => `(${b} / (${p} / 100))`,
+  )
 
   return expression
 }
@@ -78,16 +117,26 @@ export const handleFunctions = (expr) => {
   let expression = expr
 
   // First handle round() wrapping unit conversions: round(1 month in days)
-  expression = expression.replace(/\b(round|ceil|floor)\s*\(([^)]*\b(?:in|to|as)\b[^)]*)\)/gi, (_, fn, inner) => {
-    try {
-      const unitResult = handleUnitExpression(inner.trim())
-      if (unitResult.isConverted || unitResult.hasUnit) {
-        const mathFn = fn.toLowerCase() === 'round' ? Math.round : fn.toLowerCase() === 'ceil' ? Math.ceil : Math.floor
-        return mathFn(unitResult.value).toString()
+  expression = expression.replace(
+    /\b(round|ceil|floor)\s*\(([^)]*\b(?:in|to|as)\b[^)]*)\)/gi,
+    (_, fn, inner) => {
+      try {
+        const unitResult = handleUnitExpression(inner.trim())
+        if (unitResult.isConverted || unitResult.hasUnit) {
+          const mathFn =
+            fn.toLowerCase() === 'round'
+              ? Math.round
+              : fn.toLowerCase() === 'ceil'
+                ? Math.ceil
+                : Math.floor
+          return mathFn(unitResult.value).toString()
+        }
+      } catch (_e) {
+        /* fall through */
       }
-    } catch (_e) { /* fall through */ }
-    return `${fn}(${inner})`
-  })
+      return `${fn}(${inner})`
+    },
+  )
 
   // N-th root: root N (X)
   expression = expression.replace(/\broot\s+(\d+(?:\.\d+)?)\s*\(([^)]+)\)/gi, (_, n, arg) => {
@@ -105,7 +154,15 @@ export const handleFunctions = (expr) => {
     [/\babs\s*\(([^)]+)\)/gi, (_, a) => Math.abs(evaluateMathSimple(a)).toString()],
     [/\blog\s*\(([^)]+)\)/gi, (_, a) => Math.log10(evaluateMathSimple(a)).toString()],
     [/\bln\s*\(([^)]+)\)/gi, (_, a) => Math.log(evaluateMathSimple(a)).toString()],
-    [/\bfact\s*\(([^)]+)\)/gi, (_, a) => { let n = Math.floor(evaluateMathSimple(a)), r = 1; for (let i = 2; i <= n; i++) r *= i; return r.toString() }],
+    [
+      /\bfact\s*\(([^)]+)\)/gi,
+      (_, a) => {
+        let n = Math.floor(evaluateMathSimple(a)),
+          r = 1
+        for (let i = 2; i <= n; i++) r *= i
+        return r.toString()
+      },
+    ],
     [/\bround\s*\(([^)]+)\)/gi, (_, a) => Math.round(evaluateMathSimple(a)).toString()],
     [/\bceil\s*\(([^)]+)\)/gi, (_, a) => Math.ceil(evaluateMathSimple(a)).toString()],
     [/\bfloor\s*\(([^)]+)\)/gi, (_, a) => Math.floor(evaluateMathSimple(a)).toString()],
@@ -183,10 +240,13 @@ export const evaluateMath = (expr) => {
   }
 
   // Handle scales (word form)
-  expression = expression.replace(/(\d+(?:\.\d+)?)\s*(thousand|thousands|million|millions|billion|billions|trillion|trillions)\b/g, (_, num, scale) => {
-    const multiplier = scales[scale]
-    return `(${parseFloat(num) * multiplier})`
-  })
+  expression = expression.replace(
+    /(\d+(?:\.\d+)?)\s*(thousand|thousands|million|millions|billion|billions|trillion|trillions)\b/g,
+    (_, num, scale) => {
+      const multiplier = scales[scale]
+      return `(${parseFloat(num) * multiplier})`
+    },
+  )
 
   // Handle k scale (case-insensitive since expression is lowered)
   expression = expression.replace(/(\d+(?:\.\d+)?)\s*k\b/g, (_, num) => {

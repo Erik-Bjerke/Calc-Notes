@@ -51,12 +51,7 @@ describe('sub keyword (subtraction aggregation)', () => {
 
   it('works with labeled lines', () => {
     const { evaluateLines } = useCalculator()
-    const results = evaluateLines([
-      'Salary: 1457',
-      'Food: 200',
-      'Fuel: 100',
-      'sub',
-    ])
+    const results = evaluateLines(['Salary: 1457', 'Food: 200', 'Fuel: 100', 'sub'])
 
     // 1457 - 200 - 100 = 1157
     const subLine = results[3]
@@ -66,12 +61,7 @@ describe('sub keyword (subtraction aggregation)', () => {
 
   it('works with currency (EUR)', () => {
     const { evaluateLines } = useCalculator()
-    const results = evaluateLines([
-      'Salary: €1457',
-      'Food: €200',
-      'Fuel: €100',
-      'sub',
-    ])
+    const results = evaluateLines(['Salary: €1457', 'Food: €200', 'Fuel: €100', 'sub'])
 
     const subLine = results[3]
     expect(subLine.result).not.toBeNull()
@@ -100,12 +90,7 @@ describe('sub keyword (subtraction aggregation)', () => {
 
   it('sub with plain text lines (no colon)', () => {
     const { evaluateLines } = useCalculator()
-    const results = evaluateLines([
-      'Arwen 900 eur',
-      'Kaisa 200 eur',
-      'transporte 300 eur',
-      'sub',
-    ])
+    const results = evaluateLines(['Arwen 900 eur', 'Kaisa 200 eur', 'transporte 300 eur', 'sub'])
 
     const subLine = results[3]
     expect(subLine.result).not.toBeNull()
@@ -117,12 +102,7 @@ describe('sub keyword (subtraction aggregation)', () => {
 
   it('sub as label: "Remaining: sub"', () => {
     const { evaluateLines } = useCalculator()
-    const results = evaluateLines([
-      'Salary: 5000',
-      'Rent: 1500',
-      'Food: 500',
-      'Remaining: sub',
-    ])
+    const results = evaluateLines(['Salary: 5000', 'Rent: 1500', 'Food: 500', 'Remaining: sub'])
 
     const subLine = results[3]
     expect(subLine.result).not.toBeNull()
@@ -132,12 +112,7 @@ describe('sub keyword (subtraction aggregation)', () => {
 
   it('does not conflict with a variable named sub', () => {
     const { evaluateLines } = useCalculator()
-    const results = evaluateLines([
-      'sub = 10',
-      '50',
-      '20',
-      'sub',
-    ])
+    const results = evaluateLines(['sub = 10', '50', '20', 'sub'])
 
     // "sub" is now a variable with value 10, not the keyword
     const lastLine = results[3]

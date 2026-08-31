@@ -6,11 +6,7 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
-  "categories": [
-    "productivity",
-    "utilities",
-    "education"
-  ],
+  "categories": ["productivity", "utilities", "education"],
   "icons": [
     {
       "src": "/icons/icon-48.webp",
