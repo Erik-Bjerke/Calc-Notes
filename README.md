@@ -26,7 +26,13 @@ Do math with natural language and get results in real time as you type. Just wri
 - **i18n** — English and Spanish, easy to add more
 - **In-app updates** — automatic update detection with toast notifications
 
-Built with Nuxt 4, Vue 3, CodeMirror, Tailwind CSS, and Dexie.js.
+Built with Nuxt 4, Vue 3, CodeMirror, Tailwind CSS, Dexie.js, and the
+[Numori UI](https://www.npmjs.com/package/numori-ui) design system — consumed
+from npm and registered globally with the `Ui` prefix, so `<UiButton>`,
+`<UiToast>`, `<UiBanner>`, `<UiSpinner>` and `<UiThemeToggle>` resolve with no
+import. Toasts, the offline and email-verification banners, the theme toggle and
+the sync spinner all come from that shared library rather than being duplicated
+here.
 
 ## Prerequisites
 
@@ -155,7 +161,6 @@ npm run dev                 # http://localhost:3000
 │   ├── ConfirmDeleteModal.vue     # Single-delete confirmation
 │   ├── ConfirmPermanentDeleteModal.vue # Permanent delete confirmation
 │   ├── DeleteGroupModal.vue       # Group deletion confirmation
-│   ├── EmailVerificationBanner.vue # Email verification prompt banner
 │   ├── EmailVerificationModal.vue # Email verification OTP modal
 │   ├── ExportOptionsModal.vue     # Export format picker
 │   ├── FileDropdown.vue           # File menu dropdown
@@ -166,7 +171,6 @@ npm run dev                 # http://localhost:3000
 │   ├── NoteEditor.vue             # CodeMirror editor wrapper with calc integration
 │   ├── NoteListItem.vue           # Single note row in the sidebar
 │   ├── NoteMetaModal.vue          # Note rename / metadata / share modal
-│   ├── OfflineIndicator.vue       # Offline status indicator
 │   ├── PrintModal.vue             # Print preview / options modal
 │   ├── RestoreConfirmModal.vue    # Backup restore confirmation
 │   ├── RestorePasswordModal.vue   # Backup restore password prompt
@@ -174,9 +178,7 @@ npm run dev                 # http://localhost:3000
 │   ├── ShareAnalyticsModal.vue    # Shared note view analytics
 │   ├── SharedNoteToolbar.vue      # Toolbar for the public shared-note page
 │   ├── ShareModal.vue             # Share a note (password, link, analytics)
-│   ├── SyncIndicator.vue          # Sync status indicator
-│   ├── ThemeSwitcher.vue          # Light / dark mode toggle
-│   ├── ToastNotification.vue      # Toast notification component
+│   ├── SyncIndicator.vue          # Sync status puck (wraps numori-ui's UiSpinner)
 │   ├── UpdateNotification.vue     # In-app update available notification
 │   ├── ViewDropdown.vue           # View menu dropdown (zoom, markdown, theme toggle)
 │   └── WelcomeWizard.vue          # First-run onboarding wizard

@@ -17,7 +17,11 @@
           <Icon name="mdi:arrow-left" class="w-4 h-4" />
           Numori
         </a>
-        <ThemeSwitcher />
+        <UiThemeToggle
+          :is-dark="isDark"
+          :label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          @toggle="toggleTheme"
+        />
       </div>
     </header>
 
@@ -127,6 +131,12 @@ const route = useRoute()
 const hash = route.params.hash
 const { apiFetch } = useApi()
 const auth = useAuth()
+
+const colorMode = useColorMode()
+const isDark = computed(() => colorMode.value === 'dark')
+const toggleTheme = () => {
+  colorMode.preference = isDark.value ? 'light' : 'dark'
+}
 
 const loading = ref(true)
 const importing = ref(false)

@@ -14,9 +14,10 @@
       role="status"
       aria-label="Syncing in progress"
     >
-      <Icon
-        name="mdi:sync"
-        class="w-5 h-5 block text-primary-600 dark:text-primary-400 animate-spin"
+      <UiSpinner
+        icon="mdi:sync"
+        size="md"
+        class="block text-primary-600 dark:text-primary-400"
       />
     </div>
   </Transition>

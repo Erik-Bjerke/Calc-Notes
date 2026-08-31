@@ -1,9 +1,18 @@
 <template>
   <div class="h-screen flex flex-col bg-white dark:bg-gray-925 overscroll-none">
-    <OfflineIndicator :offline="!sw.isOnline.value" />
+    <UiBanner
+      :show="!sw.isOnline.value"
+      color="warning"
+      icon="mdi:wifi-off"
+      message="You're offline — changes will sync when you reconnect"
+    />
 
-    <EmailVerificationBanner
-      :visible="auth.isLoggedIn.value && auth.user.value?.emailVerified === false"
+    <UiBanner
+      :show="auth.isLoggedIn.value && auth.user.value?.emailVerified === false"
+      color="info"
+      icon="mdi:email-alert-outline"
+      message="Your email is not verified — tap here to verify"
+      clickable
       @click="authHandlers.showEmailVerificationModal.value = true"
     />
 
@@ -350,7 +359,7 @@
     />
 
     <UpdateNotification :visible="sw.updateAvailable.value" :is-native="sw.isNative" @apply="sw.applyUpdate" @dismiss="sw.dismissUpdate" />
-    <ToastNotification :toasts="toast.toasts.value" />
+    <UiToast :toasts="toast.toasts.value" />
 
     <UiButton
       v-if="focusMode" variant="ghost" color="gray" icon-only
